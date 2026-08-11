@@ -32,6 +32,8 @@ It is **not** a directory. It is **not** a chatbot. It is **not** a marketplace 
 
 ## 1. Motivation (non-normative)
 
+The plainest way to say what this is: a small block of truth at the top of a site that Says what the business does and does not do, so an agent gets its yes or no and moves on. A person's agent wants to know one thing quickly, is this shop open so I can order or visit, and today the only way to learn it is to crawl the whole site and burn tokens, which is human energy, to find one fact. Say puts the fast facts up front, open or closed, hours, service area, whether this job is even served, so the agent stops reading a marketing novel to answer a yes/no question.
+
 Today an agent that needs a water heater repaired must scrape marketing pages, guess service areas, and burn tokens on layout chrome. A clean refusal should be the cheapest byte on the site. A qualified yes should carry enough structure to act without a second novel of HTML.
 
 Publisher-only conventions without callers rot (see the empty-file problem around `llms.txt`-style artifacts). This protocol is designed to ship with:
