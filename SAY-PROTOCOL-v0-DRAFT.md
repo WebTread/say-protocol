@@ -120,12 +120,13 @@ JSON object including at minimum:
 |-------|---------|
 | `v` | protocol version (0) |
 | `as_of` | date of oldest material fact the surface will rely on |
-| `jobs` | closed list of job tokens *this site* understands |
+| `jobs` | closed list of job tokens *this site* understands; each MAY declare a per-job `geo` mode (`"grain"` = answered by the declared grain, `"arranged"` = geography genuinely settled case by case) |
+| `grain` | the site's OWN declared geographic decision vocabulary (regions, cities, zips, radius classes — whatever the business actually decides by; there is no global closed enum, because real businesses do not decide by a spec's list) |
 | `endpoints` | URLs for ask, facts, changes, complaint as implemented |
 | `auth` | what is required for L1 (v0: none for basic ask) |
 | `rate` | the implementation's DECLARED rate posture, including honestly declaring `"none"` (shared hosting cannot always meter; a declared absence beats a fictional limit) |
 | `safety` | how life-safety classes are handled |
-| `valid_until` | a date after which consumers MUST treat this surface's artifacts as ABSENT, not merely stale (an abandoned install must not serve dead facts forever) |
+| `valid_until` | a date after which consumers MUST treat this surface's artifacts as ABSENT, not merely stale — and past which a live origin SHOULD go dark server-side too (the reference implementation 404s itself on expiry; an abandoned install must not serve dead facts forever) |
 
 **Forbidden in v0 descriptor claims:** self-attested capacity counts presented as protocol truth; “network trusted” badges; prices framed as firm offers unless a later profile defines offer objects; credential facts (license, insurance) without a pointer to the issuing authority’s own check surface — no check URL, no claim.
 
@@ -141,7 +142,7 @@ Required:
 
 Common optional:
 
-- `zip` or `city`  
+- `where` — geography expressed at the site's declared grain (the param is grain-neutral by design: a region business answers regions, a zip business answers zips)  
 - `urgency` — e.g. `emergency` \| `same_day` \| `this_week` \| `schedule`  
 - `need` — an array of strings drawn from the descriptor's declared `need` vocabulary (for example `["min","fee_policy","open_now","license_ref"]`); unknown members are ignored and named back in the response so divergent implementations cannot silently split  
 - `agent.purpose` — `prequalify` \| `compare` \| `book_intent` \| `research` \| `audit`  
@@ -166,7 +167,8 @@ Unrecognized future `r` values MUST be treated by clients as `indeterminate` (ne
 
 ### 7.3 `no`
 
-- Closed `why` enum (examples): `out_of_area`, `job_not_served`, `after_hours_no_emergency`, `urgency_unavailable`, `seasonal_closed`, `surface_disabled`, …  
+- Closed `why` enum, SITE-DECLARED in the descriptor (examples: `out_of_area`, `job_not_served`, `after_hours_no_emergency`, `urgency_unavailable`, `seasonal_closed`, `surface_disabled`) — an origin declares only the refusals it can actually emit  
+- `grain` appears on geographic refusals and is OMITTED on non-geographic ones (an hours-based no must not misreport geography as its decider)  
 - **No receipt id.**  
 - **No marketing CTA** required or recommended. A no is a brake light, not a lead form.  
 - Token target: on the order of **tens of tokens**, not thousands.
@@ -181,11 +183,12 @@ Unrecognized future `r` values MUST be treated by clients as `indeterminate` (ne
 ### 7.5 `indeterminate`
 
 Only when the site **genuinely does not know**.  
-Not allowed as a dark-pattern soft maybe for known out-of-area.
+Not allowed as a dark-pattern soft maybe for known out-of-area.  
+One legitimate class proven by the first implementation: a job whose geography is genuinely settled case by case (descriptor `geo: "arranged"`) answers `indeterminate` with a `why` such as `geo_by_arrangement` — because a hard `no` would contradict the human page that says "by arrangement," and parity outranks tidiness.
 
 ### 7.6 `safety`
 
-Life-safety classes (gas leak, CO, active flooding, etc., defined per vertical profile) MUST NOT return a bare `no` without emergency referral information. When the ask includes geography, referral information is appropriate to that jurisdiction; **when the ask omits geography, the origin defaults to its own primary service jurisdiction and marks the answer `jurisdiction: "assumed"`** — a conformant safety answer is therefore always possible (this closes an impossible-conformance defect caught in ratification round 1). Safety answers are never paywalled.
+Life-safety classes (gas leak, CO, active flooding, etc., defined per vertical profile) MUST NOT return a bare `no` without emergency referral information. When the ask includes geography, referral information is appropriate to that jurisdiction; **when the ask omits geography, the origin defaults to its own primary service jurisdiction and marks the answer `jurisdiction: "assumed"`** — a conformant safety answer is therefore always possible (this closes an impossible-conformance defect caught in ratification round 1). The descriptor's safety block carries `human_reviewed: true|false`; a life-safety class list MUST be human-reviewed before any vertical with real exposure lights, and declaring `false` honestly is conformant while `true` without a review is not. Safety answers are never paywalled.
 
 ---
 
@@ -256,11 +259,13 @@ If offered:
 
 ## 15. Performance targets (informative)
 
-Measured on reference stacks with a fixed tokenizer (`o200k_base` in the reference measurements; publish yours with the number):
+Measured on reference stacks with a fixed tokenizer (`o200k_base` in the reference measurements; publish yours with the number). Live numbers from the first implementation (ridgeline.preview.sayvel.com, measured on the wire):
 
-- Fast `no`: about **30–50 tokens** body  
-- Descriptor: preferably under a few hundred tokens  
-- Cold path to a qualified lean `yes` should stay far below scrapes of full marketing sites  
+- Fast `no`: **42–51 tokens** body (urgency-based 42; geographic 51 — the mandatory anti-redlining `basis` field costs exactly 6 tokens per refusal, and we publish that price rather than rounding it away)  
+- Lean `yes`: **77 tokens**; fully loaded yes with four `need` fields: 191  
+- Unknown job, teaching the full 12-job vocabulary back: 93  
+- Descriptor: **617 tokens**, fetched once per agent (the weight IS the job vocabulary, which is what the agent came for)  
+- Cold path to a qualified lean `yes` including the one-time descriptor: **694 tokens**  
 
 Publish measurements with method, not vibes.
 
@@ -332,6 +337,15 @@ Fold rules: evidence over vibes; non-harm over cleverness; no directory creep.
 ---
 
 ## 20a. Change log (public, newest first)
+
+**2026-08-11, later the same night — seven folds from the FIRST LIVE IMPLEMENTATION (ridgeline.preview.sayvel.com), hours after it shipped.** The Captain's standing order: what makes sense becomes the live truth immediately; the unsettled stays open for argument. Folds, each proven on the wire before it was written here:
+1. §6: `grain` is the site's OWN declared vocabulary — no global closed enum (a real business decides by regions, not by a spec's list).
+2. §6: jobs may declare per-job `geo` mode (`grain` vs `arranged`) — geography is job-conditional in real businesses.
+3. §7.1: the geography param is `where`, grain-neutral by design.
+4. §7.3: `why` vocabularies are site-declared; `grain` omitted on non-geographic refusals so answers never misreport their decider.
+5. §7.5: `geo: "arranged"` jobs legitimately answer `indeterminate` — parity with the human page outranks tidiness.
+6. §7.6: safety blocks carry `human_reviewed`, and honesty about `false` is conformant while unreviewed `true` is not.
+7. §6/§15: server-side expiry on `valid_until`; live measured token table replaces estimates, including the published 6-token price of the anti-redlining fold.
 
 **2026-08-11, same night as ratification round 1 — six folds, hours after the critiques landed:**
 1. §7.1 geography grain-locked to the site's own decision grain, `basis` required on geographic refusals, coverage-map building named a prohibited use (flagged independently by four reviewing models).
