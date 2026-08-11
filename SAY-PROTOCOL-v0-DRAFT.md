@@ -123,8 +123,9 @@ JSON object including at minimum:
 | `jobs` | closed list of job tokens *this site* understands |
 | `endpoints` | URLs for ask, facts, changes, complaint as implemented |
 | `auth` | what is required for L1 (v0: none for basic ask) |
-| `rate` | stated limits if any |
+| `rate` | the implementation's DECLARED rate posture, including honestly declaring `"none"` (shared hosting cannot always meter; a declared absence beats a fictional limit) |
 | `safety` | how life-safety classes are handled |
+| `valid_until` | a date after which consumers MUST treat this surface's artifacts as ABSENT, not merely stale (an abandoned install must not serve dead facts forever) |
 
 **Forbidden in v0 descriptor claims:** self-attested capacity counts presented as protocol truth; “network trusted” badges; prices framed as firm offers unless a later profile defines offer objects; credential facts (license, insurance) without a pointer to the issuing authority’s own check surface — no check URL, no claim.
 
@@ -142,12 +143,12 @@ Common optional:
 
 - `zip` or `city`  
 - `urgency` — e.g. `emergency` \| `same_day` \| `this_week` \| `schedule`  
-- `need` — agent-side budget of extra fields (min, fee policy, open now, license pointer, …)  
+- `need` — an array of strings drawn from the descriptor's declared `need` vocabulary (for example `["min","fee_policy","open_now","license_ref"]`); unknown members are ignored and named back in the response so divergent implementations cannot silently split  
 - `agent.purpose` — `prequalify` \| `compare` \| `book_intent` \| `research` \| `audit`  
 
 Unknown `job` → error naming the allowed enum (teach in one round trip).
 
-**v0 does not take arbitrary lat/lon points** for area tests (probing and redlining hazard). Geography is quantized to the grain the site actually decides (zip/city/state).
+**Geography is grain-locked to the site's own decision grain.** v0 does not take arbitrary lat/lon points, and a site MUST NOT answer at a finer geographic grain than the grain on which it actually decides service (if it decides by city, it answers by city, even when asked by zip). Every geographic `no` MUST carry a `basis` naming the operational reason (distance, licensing territory, crew reach, seasonal). Four independent reviewing models converged on the same hazard: quantization changes resolution, not the redlining risk — enumeration of coarse answers can still draw a coverage map. So the protocol's defenses are stacked, not singular: grain-locking here, the `basis` requirement, §12's vertical exclusion, and §16's rate posture together; and building demographic coverage maps from answers is a prohibited use under §12 regardless of grain.
 
 ### 7.2 Response envelope
 
@@ -184,7 +185,7 @@ Not allowed as a dark-pattern soft maybe for known out-of-area.
 
 ### 7.6 `safety`
 
-Life-safety classes (gas leak, CO, active flooding, etc., defined per vertical profile) MUST NOT return a bare `no` without emergency referral information appropriate to the jurisdiction. Safety answers are never paywalled.
+Life-safety classes (gas leak, CO, active flooding, etc., defined per vertical profile) MUST NOT return a bare `no` without emergency referral information. When the ask includes geography, referral information is appropriate to that jurisdiction; **when the ask omits geography, the origin defaults to its own primary service jurisdiction and marks the answer `jurisdiction: "assumed"`** — a conformant safety answer is therefore always possible (this closes an impossible-conformance defect caught in ratification round 1). Safety answers are never paywalled.
 
 ---
 
@@ -192,7 +193,7 @@ Life-safety classes (gas leak, CO, active flooding, etc., defined per vertical p
 
 A record represents checks performed and answer identity. It states **what was checked**, in the implementer’s name, with timestamps. It does **not** claim independent certification of business quality.
 
-Idempotency: retries with the same key must not create duplicate obligations.
+Idempotency: the client supplies an `Idempotency-Key` request header (an opaque client-generated string); retries with the same key MUST NOT create duplicate obligations. In v0, idempotency keys are honored for keyed identities only and are namespaced by key id; anonymous callers receive no idempotency guarantee, and the descriptor says so.
 
 Signatures are optional in v0; a later profile may add them.
 
@@ -329,6 +330,18 @@ Editors: Sledge and Beacon. Arbiter: Grant.
 Fold rules: evidence over vibes; non-harm over cleverness; no directory creep.
 
 ---
+
+## 20a. Change log (public, newest first)
+
+**2026-08-11, same night as ratification round 1 — six folds, hours after the critiques landed:**
+1. §7.1 geography grain-locked to the site's own decision grain, `basis` required on geographic refusals, coverage-map building named a prohibited use (flagged independently by four reviewing models).
+2. §7.6 impossible-conformance defect closed: geography-less safety asks default to the origin's own jurisdiction, marked `assumed` (caught by the GLM-5.2 review).
+3. §8 idempotency key defined (header, scope, anonymous exclusion) — it was referenced but never specified (GLM-5.2).
+4. §7.1 `need` schema pinned to an array of declared-vocabulary strings with unknown members named back (GLM-5.2, divergent-implementation hazard).
+5. §6 descriptor gains `valid_until`: expired artifacts are ABSENT, not stale — an abandoned install must not serve dead facts forever (plugin-architecture council finding).
+6. §6 `rate` becomes a DECLARED posture including an honest `"none"` — shared hosting cannot always meter, and a declared absence beats a fictional limit (plugin-architecture council finding).
+
+Edited by Beacon on the Captain's same-night order ("fix immediately what you and Sledge see as obvious"); Sledge holds full revert-and-amend rights per crew law, exercised in the open like everything else here.
 
 ## 21. References (informative)
 
