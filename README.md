@@ -28,10 +28,10 @@ Discovery needs no instructions. Every HTML page on that origin returns `Link: <
 
 ```console
 $ curl -s 'https://ridgeline.preview.sayvel.com/agent/v0/preflight?job=guided-day-hike&where=boulder'
-{"v":0,"r":"no","why":"out_of_area","basis":"crew_reach","grain":"region","as_of":"2026-08-11","gen":"379942a","doc":"/agent/v0/index.json"}
+{"v":0,"r":"no","why":"out_of_area","basis":"crew_reach","grain":"region","as_of":"2026-08-11","gen":"2fc9294","doc":"/agent/v0/index.json"}
 ```
 
-Fifty tokens. It names the operational reason for the refusal (`basis`), reports the grain it was actually decided at (this business guides six named regions out of one basecamp, so it answers by region and never finer, whatever grain the question arrives in), mints no record, and carries no marketing.
+Fifty-one tokens. It names the operational reason for the refusal (`basis`), reports the grain it was actually decided at (this business guides six named regions out of one basecamp, so it answers by region and never finer, whatever grain the question arrives in), mints no record, and carries no marketing.
 
 **And a yes:**
 
@@ -39,23 +39,23 @@ Fifty tokens. It names the operational reason for the refusal (`basis`), reports
 $ curl -s 'https://ridgeline.preview.sayvel.com/agent/v0/preflight?job=summit-push&where=rim-country&need=open_now'
 {"v":0,"r":"yes","job":"summit-push","grain":"region","where":"rim-country","open_now":true,
  "do":[{"a":"call","href":"tel:+15550142280"},{"a":"quote","href":"/contact"}],
- "as_of":"2026-08-11","gen":"379942a","doc":"/agent/v0/index.json"}
+ "as_of":"2026-08-11","gen":"2fc9294","doc":"/agent/v0/index.json"}
 ```
 
-**Measured** on the live wire at `gen` 379942a, `o200k_base` via tiktoken, bodies exactly as sent:
+**Measured** on the live wire at `gen` 2fc9294, `o200k_base` via tiktoken, bodies exactly as sent:
 
 | shape | tokens | bytes |
 |---|---:|---:|
-| fast no, geographic | 50 | 140 |
-| fast no, urgency | 41 | 110 |
-| lean yes | 76 | 220 |
-| yes, all four `need` flags | 190 | 515 |
-| indeterminate | 48 to 54 | 146 to 151 |
+| fast no, geographic | 51 | 140 |
+| fast no, urgency | 42 | 110 |
+| lean yes | 77 | 220 |
+| yes, all four `need` flags | 191 | 515 |
+| indeterminate | 49 to 55 | 146 to 151 |
 | unknown job (400, and it returns the whole vocabulary) | 93 | 336 |
-| descriptor, fetched once per agent | 616 | 2328 |
-| facts bundle, fetched once | 445 | 1524 |
+| descriptor, fetched once per agent | 617 | 2328 |
+| facts bundle, fetched once | 446 | 1524 |
 
-Descriptor plus one lean yes is **692 tokens** to a dated, sourced, actionable answer. Two honest notes rather than round numbers: the geographic no is 50 rather than the 45 the design targeted, and the four extra tokens are `basis`, which round 1 of ratification made mandatory on geographic refusals; and these drift by a token or two between deploys, because `gen` is a commit SHA and different SHAs tokenize into different numbers of pieces. Re-measure, do not round.
+Descriptor plus one lean yes is **694 tokens** to a dated, sourced, actionable answer. Two honest notes rather than round numbers: the geographic no is 51 where the design targeted 45, and the difference is exactly the six tokens of `basis`, which round 1 of ratification made mandatory on geographic refusals (strip that one field and the body lands on 45 precisely, so the target was met and then deliberately spent on honesty); and these drift by a token or two between deploys, because `gen` is a commit SHA and different SHAs tokenize into different numbers of pieces. Re-measure, do not round.
 
 ## What it is not
 
