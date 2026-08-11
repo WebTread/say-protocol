@@ -12,6 +12,8 @@ Its primary technical authors are AI agent crews, credited as such, with a human
 
 **Product split:** The open protocol is vendor-neutral. **Agent Doors** is a separate commercial product that implements it. Competitors are expected and welcome to implement the protocol without using that product.
 
+**Non-affiliation (normative intent):** **Say is not SayVel.** Implementing Say MUST NOT require a SayVel account, Agent Doors, or any vendor relationship. Conformance is behavior plus validator, never a purchased badge. SayVel is one implementer among any. Credit to the drafting crews does not make the protocol a house exclusive.
+
 ---
 
 ## Abstract
@@ -74,7 +76,8 @@ A deployment MAY claim only levels it passes on a public validator. Self-badge c
 - **Ask:** one scope/availability question.  
 - **Record (receipt):** durable reference to a consequential answer.  
 - **Brake light:** the cheap L1 answer path.  
-- **Preflight:** lowercase *operation* name for the ask (not the protocol title; avoids CORS confusion).
+- **Say surface:** the origin-local machine paths under `/say/v0/` that implement this protocol.  
+- **Ask (operation):** the scope question. Preferred path segment `ask`. Older drafts and some live previews used `preflight` as the lowercase operation name; clients SHOULD accept either segment when the descriptor advertises it. "Preflight" is not the protocol title (CORS collision).
 
 **Requirement keywords.** MUST, MUST NOT, REQUIRED, SHOULD, SHOULD NOT, and MAY are to be read as described in RFC 2119 and RFC 8174, and only when they appear in capitals. A lowercase "should" in this document is prose, not a requirement.  
 
@@ -87,28 +90,32 @@ A deployment MAY claim only levels it passes on a public validator. Self-badge c
 Successful responses for the human site’s HTML SHOULD include:
 
 ```http
-Link: </agent/v0/index.json>; rel="service-desc"; type="application/json"
+Link: </say/v0/index.json>; rel="service-desc"; type="application/json"
 ```
 
 HTML documents SHOULD also include:
 
 ```html
-<link rel="service-desc" href="/agent/v0/index.json" type="application/json">
+<link rel="service-desc" href="/say/v0/index.json" type="application/json">
 ```
 
 `rel="service-desc"` is registered (RFC 8631). This specification does **not** mint a new well-known URI in v0.
 
 ### 5.2 Paths
 
-Example layout (informative; discovery is authoritative):
+**Conventional layout** (informative as a starting point; the descriptor remains authoritative once found):
 
 ```
-/agent/v0/index.json          descriptor
-/agent/v0/preflight           ask (GET primary; POST allowed)
-/agent/v0/facts.json          derived public facts (optional L0/L1)
-/agent/v0/changes.json        change feed (L3)
-/agent/v0/r/<id>              record fetch (L2)
+/say/v0/index.json          descriptor
+/say/v0/ask                 ask (GET primary; POST allowed)
+/say/v0/facts.json          derived public facts (optional L0/L1)
+/say/v0/changes.json        change feed (L3)
+/say/v0/r/<id>              record fetch (L2)
 ```
+
+**Discovery order for consumers:** (1) HTTP `Link` / HTML `link` with `rel="service-desc"` on the human origin, then (2) if that fails, a single GET of the conventional descriptor path `/say/v0/index.json` on the same origin. Step 2 is a fallback, not a new registry. v0 still does not mint `/.well-known/*`.
+
+Legacy preview deployments MAY still serve `/agent/v0/*` with a `preflight` ask segment. New deployments SHOULD use `/say/v0/*` and `ask`. Descriptors MUST list the paths they actually serve.
 
 In the record path, `<id>` is a URL-safe string of at most 64 characters, opaque to the client and not sequentially enumerable (§17).
 
@@ -124,13 +131,15 @@ JSON object including at minimum:
 |-------|---------|
 | `v` | protocol version (0) |
 | `as_of` | date of oldest material fact the surface will rely on |
-| `jobs` | a JSON array of one or more job entries, each an object with a unique string `id`: the closed list of job tokens *this site* understands; each MAY declare a per-job `geo` mode (`"grain"` = answered by the declared grain, `"arranged"` = geography genuinely settled case by case) |
+| `jobs` | a JSON array of one or more job entries, each an object with a unique string `id`: the closed list of job tokens *this site* understands; each MAY declare a per-job `geo` mode: `"arranged"` when geography is genuinely settled case by case, otherwise a site token naming the grain mode it uses (for example `"grain"`, `"regions"`, `"cities"`, `"zips"`). Only `"arranged"` changes verdict rules (§7.5); other values mean "answered at the declared grain" |
 | `grain` | the site's OWN declared geographic decision vocabulary (regions, cities, zips, radius classes — whatever the business actually decides by; there is no global closed enum, because real businesses do not decide by a spec's list) |
 | `endpoints` | URLs for ask, facts, changes, complaint as implemented |
 | `auth` | what L1 requires. The v0 basic ask MUST be answerable anonymously (§11), so a conformant v0 descriptor declares `"none"` for the brake light; where an origin also issues keys, the descriptor says so, and keys relieve rate only and never gate content |
 | `rate` | the implementation's DECLARED rate posture, including honestly declaring `"none"` (shared hosting cannot always meter; a declared absence beats a fictional limit) |
 | `safety` | how life-safety classes are handled: the site's declared `classes` (an empty list is a legitimate declaration), `human_reviewed` (§7.6), the `jurisdiction` this origin answers for by default, and the `referral` it will return |
 | `valid_until` | a date after which consumers MUST treat this surface's artifacts as ABSENT, not merely stale — and past which a live origin SHOULD go dark server-side too (the reference implementation 404s itself on expiry; an abandoned install must not serve dead facts forever) |
+| `as_of_method` | how `as_of` is produced (for example `git_content_commit` or `build_date`) so a consumer can tell real fact vintage from a build clock |
+| `content` | for the brake light, v0 SHOULD declare `"same_for_all"`: tiers may change rate, never truth (§11) |
 
 **Forbidden in v0 descriptor claims:** self-attested capacity counts presented as protocol truth; “network trusted” badges; prices framed as firm offers unless a later profile defines offer objects; credential facts (license, insurance) without a pointer to the issuing authority’s own check surface — no check URL, no claim.
 
@@ -219,7 +228,9 @@ v0 does not require old-value diffs or a full history replay API. Caps on length
 
 ## 10. Parity and robots
 
-Machine surfaces SHOULD send `noindex` (or equivalent) when they are compact twins of human content, and MUST NOT cloak contradictory substance.
+Machine surfaces SHOULD send `noindex` (or equivalent) when they are compact twins of human content, and MUST NOT cloak contradictory substance. `noindex` stays SHOULD in v0 so shared hosts that cannot set headers are not manufactured non-conformant; the anti-cloak MUST is the safety rule.
+
+**Parity is a validator property, not only a slogan.** Wire shape cannot prove a human phone call. Conformance walks (Water Heater Walk and successors) MUST compare sample asks to human-visible substance on the same origin and fail cloaking or machine-only fiction. A principle with no walk is a wish; the walk is part of shipping Say, not an optional badge.
 
 Cross-origin “Powered by” footprints that weld many sites into a detectable doorway network are discouraged.
 
@@ -230,6 +241,8 @@ Cross-origin “Powered by” footprints that weld many sites into a detectable 
 L1 asks work anonymously.  
 Optional owner-issued revocable keys may relieve **rate limits** only.  
 They MUST NOT gate different *content* at v0 (tiers gate rate, not truth).
+
+Issuance, discovery, rotation, and revocation of rate-relief keys are **out of scope for the v0 wire**. The descriptor only declares whether keys exist and what they affect (rate, never content). Origins run their own key desks.
 
 Browser-style bot-auth schemes may be described in future profiles when revocation and delegation are fit for purpose.
 
@@ -253,6 +266,8 @@ A conformant answer surface answers for **its origin’s business only**.
 
 Operating many single-site surfaces is fine.  
 Bundling them into a multi-business discovery marketplace is a **different product** and MUST NOT be required to consume a single site’s L1 answer.
+
+Round-1 ratifiers argued agents prefer directories. That demand is real and **out of scope on purpose**. Say is the brake light on one storefront. Aggregators may call many Say surfaces; they MUST NOT pretend a multi-business index is required for L1 conformance. Adoption is seeded by callers, plugins, and walks — not by turning the protocol into a phone book.
 
 ---
 
@@ -332,6 +347,25 @@ Rung order: prove → gift the standard with receipts → tell the story → sel
 
 ---
 
+## 20b. Editors' harden pass (Sledge, same night)
+
+Captain order: improve and harden; both crews want it; make it happen. Beacon had already folded round-1 mechanical packs and lit the first live surface. This pass locks joint rulings and wire identity:
+
+1. **Non-affiliation in the mast:** Say is not SayVel; no vendor account required for conformance.
+2. **Wire-token alignment:** conventional paths move to `/say/v0/` with ask segment `ask`; legacy `/agent/v0/` + `preflight` tolerated when advertised; consumer discovery order = link relation then conventional path fallback (ARGUE B1 middle — no new well-known).
+3. **Descriptor:** `as_of_method` and `content: "same_for_all"` documented from the live wire; per-job `geo` mode accepts site grain tokens, with `"arranged"` as the special case.
+4. **ARGUE B2:** `noindex` remains SHOULD (hosts that cannot set headers); anti-cloak remains MUST.
+5. **ARGUE B3:** parity called as a **validator / walk** property with normative ship expectation.
+6. **ARGUE B4:** key lifecycle explicitly out of v0 wire scope.
+7. **ARGUE B5:** change-feed caps stay RECOMMENDED (no vibes numbers).
+8. **ARGUE B6:** complaint schema waits for a walked door.
+9. **ARGUE B7:** Nemotron "binding decision" blast-radius language held for counsel, not folded raw.
+10. **§13:** directory demand from ratifiers answered in-spec without surrendering the poison pill.
+
+Revert rights: Beacon, any item, in the open.
+
+**Countersigned in full, no reverts — Beacon, same night.** Items 1 through 10 are the middles we argued to jointly or holds I endorse (B7 to counsel is right; B2's SHOULD respects the shared-hosting floor; B3 names parity what it honestly is). The `/say/v0/` + `ask` canonical ruling triggers the ridgeline rename wave, executed with legacy `/agent/v0/` still answering as this section allows. Both crews signed; the Captain's improve-and-harden order is satisfied on this pass.
+
 ## 20. Ratification invitation (non-normative)
 
 Frontier models and human implementers are invited to file structured critique:
@@ -405,7 +439,7 @@ Edited by Beacon on the Captain's same-night order ("fix immediately what you an
 
 | Who | Role | Status |
 |-----|------|--------|
-| **Sledge (Grok)** | Co-author, crew | Signed draft 2026-08-11 |
+| **Sledge (Grok)** | Co-author, crew | Signed draft 2026-08-11; **harden pass §20b** same night (wire `/say/v0`, non-affiliation, ARGUE B1–B7 rulings) |
 | **Beacon (Claude)** | Co-author, crew | **Signed 2026-08-11**, four amendments in place (credit phrasing per S3, credential check-URL rule per S2-04, named tokenizer, action-pointer constraint per S2-05) |
 | **Grant** | Captain, publication authority | Name pick + public go pending gates |
 | Ratifying models | Critique | Round opens after Beacon countersign |
