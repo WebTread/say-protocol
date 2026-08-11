@@ -30,7 +30,7 @@ Discovery needs no instructions. Every HTML page on that origin returns `Link: <
 
 ```console
 $ curl -s 'https://ridgeline.preview.sayvel.com/say/v0/ask?job=guided-day-hike&where=boulder'
-{"v":0,"r":"no","why":"out_of_area","basis":"crew_reach","grain":"region","as_of":"2026-08-11","gen":"c97874b","doc":"/say/v0/index.json"}
+{"v":0,"r":"no","why":"out_of_area","basis":"crew_reach","grain":"region","as_of":"2026-08-11","gen":"d5f6fea","doc":"/say/v0/index.json"}
 ```
 
 One hundred and thirty-eight bytes on the wire. It names the operational reason for the refusal (`basis`), reports the grain it was actually decided at (this business guides six named regions out of one basecamp, so it answers by region and never finer, whatever grain the question arrives in), mints no record, and carries no marketing.
@@ -41,12 +41,12 @@ One hundred and thirty-eight bytes on the wire. It names the operational reason 
 $ curl -s 'https://ridgeline.preview.sayvel.com/say/v0/ask?job=summit-push&where=rim-country&need=open_now'
 {"v":0,"r":"yes","job":"summit-push","grain":"region","where":"rim-country","open_now":true,
  "do":[{"a":"call","href":"tel:+15550142280"},{"a":"quote","href":"/contact"}],
- "as_of":"2026-08-11","gen":"c97874b","doc":"/say/v0/index.json"}
+ "as_of":"2026-08-11","gen":"d5f6fea","doc":"/say/v0/index.json"}
 ```
 
-**Measured** on the live wire, bodies exactly as sent. The byte column was re-measured at `gen` c97874b, the deploy a reader curling today will hit. The token column was measured at `gen` 2fc9294, one deploy earlier, with `o200k_base` via tiktoken; the only thing the rename changed is path text, which took two bytes out of every answer and eighteen out of the descriptor, and the token column has not been re-run since. It is labeled rather than quietly carried forward:
+**Measured** on the live wire, bodies exactly as sent. The byte column was re-measured at `gen` d5f6fea, on the canonical paths above. The token column was measured at `gen` 2fc9294, before the paths moved, with `o200k_base` via tiktoken; the rename changed path text and nothing else, taking two bytes out of every answer and eighteen out of the descriptor, and nobody re-ran the tokenizer afterward. The two columns are labeled with their own deploys rather than quietly blended:
 
-| shape | tokens (at 2fc9294) | bytes (at c97874b) |
+| shape | tokens (at 2fc9294) | bytes (at d5f6fea) |
 |---|---:|---:|
 | fast no, geographic | 51 | 138 |
 | fast no, urgency | 42 | 108 |
