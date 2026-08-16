@@ -2,7 +2,7 @@
 
 **Name locked by Captain Grant, 2026-08-11: Say.** Formal cites may say “the Say protocol.”  
 **Version:** 0 (draft for hardening + model ratification)  
-**Date:** 2026-08-11 · last revised 2026-08-16 (§20a, ratification round 2)  
+**Date:** 2026-08-11 · last revised 2026-08-16 (§20a: rounds 2–3 + the descope ruling)  
 **Status:** DRAFT — not an adopted web standard until gates in §19 clear.  
 **License (proposed):** CC BY 4.0 for the text · Apache-2.0 for reference code · see §18  
 
@@ -24,7 +24,7 @@ Agents waste enormous effort discovering that a business **cannot** help: wrong 
 
 > Can *you* take this job, here, under these constraints?
 
-and get a cheap, structured, honest answer: **yes**, **no**, **indeterminate**, or **safety** — with freshness, parity to the human site, and optional receipts on consequential yes paths.
+and get a cheap, structured, honest answer: **yes**, **no**, or **indeterminate** — with freshness, parity to the human site, and optional receipts on consequential yes paths. (A fourth verdict token, `safety`, is reserved and unused in v0: Say is not an emergency channel — §7.6.)
 
 It is **not** a directory. It is **not** a chatbot. It is **not** a marketplace of “trusted network” providers. Each origin speaks for itself.
 
@@ -63,7 +63,7 @@ not merely a file format for badges.
 | Level | Name | Requirement |
 |-------|------|-------------|
 | **L0** | Structured facts | Public business facts available as structured data (JSON-LD and/or a flat facts document): identity, NAP, hours, services, area at stated grain |
-| **L1** | Brake light | Discovery + descriptor + answer operation; honest yes/no/indeterminate/safety |
+| **L1** | Brake light | Discovery + descriptor + answer operation; honest yes/no/indeterminate (`safety` reserved, §7.6) |
 | **L2** | Records | Consequential (defined in §8) yes paths can mint an idempotent record (receipt); unsigned allowed in v0 |
 | **L3** | Living surface | Change feed (fact *class* changed + `as_of`) and honest freshness |
 
@@ -138,7 +138,6 @@ JSON object including at minimum:
 | `endpoints` | URLs for ask, facts, changes, complaint as implemented |
 | `auth` | what L1 requires. The v0 basic ask MUST be answerable anonymously (§11), so a conformant v0 descriptor declares `"none"` for the brake light; where an origin also issues keys, the descriptor says so, and keys relieve rate only and never gate content |
 | `rate` | the implementation's DECLARED rate posture, including honestly declaring `"none"` (shared hosting cannot always meter; a declared absence beats a fictional limit) |
-| `safety` | how life-safety classes are handled: the site's declared `classes` (an empty list is a legitimate declaration), `human_reviewed` (§7.6), the `jurisdiction` this origin answers for by default, and the `referral` it will return |
 | `valid_until` | a date after which this surface's artifacts are EXPIRED — and expiry is never silent. For a 30-day grace window after `valid_until`, an origin MAY keep answering: the descriptor stays HTTP 200 carrying an explicit `stale: true`, every answer body carries the same flag, and a consumer MUST NOT present a stale answer as fresh. Past the window, the origin serves **410 Gone on the descriptor** — other doors may go dark, but the descriptor's 410 is the diagnosable signal, never a mystery 404 — and consumers MUST treat the surface as ABSENT. An abandoned install still cannot serve dead facts forever; a lapsed calendar no longer silently erases a correctly configured shop (re-ruled at the 2026-08-16 editors' sitting on a two-house round-2 convergence, Gemma 4 26B + Kimi K2.6, superseding round 1's absolute-ABSENT fold; the reference implementation's self-404 changes to follow this ruling) |
 | `as_of_method` | how `as_of` is produced (for example `git_content_commit` or `build_date`) so a consumer can tell real fact vintage from a build clock |
 | `content` | for the brake light, v0 SHOULD declare `"same_for_all"`: tiers may change rate, never truth (§11) |
@@ -161,7 +160,7 @@ Required:
 Common optional:
 
 - `where` — geography expressed at the site's declared grain (the param is grain-neutral by design: a region business answers regions, a zip business answers zips). The VALUE is a single string; v0 defines no object or array form. The grain that string is read at and the rule it is matched by come from the descriptor's existing declarations, not from a new field: the reference descriptor carries both in its `geo` block (`geo.grain`, `geo.match: "slug_exact_or_prefix"`), so a consumer learns the matching rule in the one fetch it already makes  
-- `urgency` (a CLOSED v0 vocabulary): `emergency` \| `same_day` \| `this_week` \| `schedule`. Unlike the site-declared vocabularies (`job`, `why`, `need`, `grain`), urgency is the ASKER's word and MUST read the same at every origin, because §7.6 depends on `emergency` being legible everywhere. An unrecognized value is an error naming the allowed set, not a silent downgrade. An omitted `urgency` means `schedule`.  
+- `urgency` (a CLOSED v0 vocabulary): `emergency` \| `same_day` \| `this_week` \| `schedule`. Unlike the site-declared vocabularies (`job`, `why`, `need`, `grain`), urgency is the ASKER's word and MUST read the same at every origin. `emergency` means BUSINESS urgency — an after-hours desk, a same-night callout — and carries no life-safety semantics whatsoever; Say is not an emergency channel (§7.6). An unrecognized value is an error naming the allowed set, not a silent downgrade. An omitted `urgency` means `schedule`.  
 - `need` — an array of strings drawn from the descriptor's declared `need` vocabulary (for example `["min","fee_policy","open_now","license_ref"]`); unknown members are ignored and named back in the response so divergent implementations cannot silently split (the reference surface names them in a `need_unknown` array; the answer is still HTTP 200 and still a verdict)  
 - `agent.purpose` — `prequalify` \| `compare` \| `book_intent` \| `research` \| `audit`. Optional and advisory: an omitted `agent.purpose` is never an error, and an origin MUST NOT vary the verdict or the substance of an answer by the declared purpose (§11: keys and tiers gate rate, never truth — a stated intent gates neither). An origin that does not read it simply omits it from the `ask` params it declares  
 
@@ -184,7 +183,7 @@ Every answer includes:
 | Field | Meaning |
 |-------|---------|
 | `v` | 0 |
-| `r` | `yes` \| `no` \| `indeterminate` \| `safety` |
+| `r` | `yes` \| `no` \| `indeterminate` — the token `safety` is RESERVED (§7.6) and MUST NOT be emitted in v0 |
 | `as_of` | oldest fact used in *this* answer, as an RFC 3339 date (`YYYY-MM-DD`) or full UTC date-time, at the precision the site actually tracks and never finer |
 | `gen` | build or generation id of the surface: an opaque string that changes whenever any fact that could change an answer changes. Clients MUST NOT parse it or order by it. An origin MAY echo `gen` as the HTTP `ETag` and honor `If-None-Match` for cheap revalidation; the change feed (§9) remains the subscription path (2026-08-16 sitting, on Kimi K2.6's round-2 finding) |
 | `doc` | pointer back to descriptor |
@@ -213,10 +212,15 @@ Only when the site **genuinely does not know**.
 Not allowed as a dark-pattern soft maybe for anything the site actually knows: where the site can reach a `no` from its own declared facts, it MUST answer `no`.  
 One legitimate class proven by the first implementation: a job whose geography is genuinely settled case by case (descriptor `geo: "arranged"`) answers `indeterminate` with a `why` such as `geo_by_arrangement` — because a hard `no` would contradict the human page that says "by arrangement," and parity outranks tidiness.
 
-### 7.6 `safety`
+### 7.6 `safety` (reserved) — Say is not an emergency channel
 
-Life-safety classes (gas leak, CO, active flooding, etc.) are DECLARED BY THE SITE in its descriptor's `safety.classes` (§6), like every other vocabulary in this protocol; v0 mints no global list and defines no vertical-profile mechanism, and a later profile MAY add one. An ask matching a declared life-safety class answers with the verdict `safety`, never `no` — a life-safety refusal wearing a `no` is non-conformant even when referral information rides along — and a `safety` answer always carries emergency referral information. When the ask includes geography, referral information is appropriate to that jurisdiction; **when the ask omits geography, the origin defaults to its own primary service jurisdiction and marks the answer `jurisdiction: "assumed"`** — a conformant safety answer is therefore always possible (this closes an impossible-conformance defect caught in ratification round 1). The same fallback covers the third case: an ask that DOES carry geography, but geography this origin cannot map to any jurisdiction it declares a referral for. The origin MUST NOT invent a referral for that geography and MUST NOT downgrade the verdict to escape the requirement; it answers `safety` with its declared default `referral`, marked `jurisdiction: "assumed"` exactly as above, so the caller can see whose emergency number it is being handed and route around it if that is the wrong country. A referral the origin cannot stand behind is worse than none, which is what the veracity rule below is for. The descriptor's safety block carries `human_reviewed: true|false`; a life-safety class list MUST be human-reviewed before any vertical with real exposure lights, and declaring `false` honestly is conformant while `true` without a review is not. Safety answers are never paywalled. Referral information MUST name the public emergency service or official authority for the jurisdiction (for example a `tel:` URI for that jurisdiction's emergency number), MUST be what the issuing authority itself publishes, and MUST NOT be the origin's own sales, dispatch, or affiliate line. The descriptor's safety block declares the default `jurisdiction` and `referral` in advance, so an agent can check them before an emergency rather than during one.
+**Say is not an emergency channel. A client that suspects a life-safety situation MUST contact public emergency services directly and MUST NOT rely on a Say answer, referral, or `yes`.** That sentence is the whole of v0's emergency semantics, and it is normative.
 
+v0 defines NO life-safety machinery: no hazard classes, no referral fields, no jurisdiction rules, no safety verdict behavior, and no `safety` block in the descriptor. An `urgency=emergency` ask is an ordinary ask about business urgency (§7.1) and receives an ordinary answer from the origin's declared vocabularies — a bakery or a hiking guide answers `no` the way it answers any out-of-scope ask, and a gas-fitter answers `yes` or `no` on job and grain exactly as it would for a scheduled water heater. Parity (§2.3, §10) still governs: whatever the human page says about emergencies, the machine surface must not contradict it.
+
+The verdict token `safety` is RESERVED: a v0 origin MUST NOT emit it, and a client that receives it treats it as `indeterminate` — §7.2's unknown-value rule already does exactly this, so the reservation costs nothing on the wire. A later profile MAY define life-safety semantics under that token, with counsel in the room, without a wire break. The drafting record for such a profile — three ratification rounds of safety folds (referral veracity, `human_reviewed`, jurisdiction honesty) and a complete three-posture design — is preserved in the public dispositions and the crew record, promised to no timetable: if nobody ever builds it, v0 is still a complete standard.
+
+Why this is the design, on the record: three ratification rounds found the previous safety section defective four different ways — invented referrals (round 1), impossible conformance (round 1), a verdict hole (the editors' own reconcile), and finally a class-declaration escape hatch (the round-3 flagship review). Every fix added machinery, and the machinery is where the hatches lived. A scope protocol that loudly declines emergency semantics protects a caller better than one that gestures at them, because the belief that a brake light can triage is itself the harm (both crews, ruled at the 2026-08-16 descope sitting on the Captain's reframe).
 ---
 
 ## 8. Records (L2)
@@ -225,7 +229,7 @@ A record represents checks performed and answer identity. It states **what was c
 
 A `yes` is CONSEQUENTIAL when the origin is willing to stand behind it as the basis for a next action — a quote, a booking, a hold. The descriptor declares which consequence classes mint records, and the ONLY signal that a given answer is record-backed is the presence of `rid`: a client MUST NOT infer records from level claims or anything else (round-3 fold — the term was used from v0 day one and never defined).
 
-Idempotency: the client supplies an `Idempotency-Key` request header (an opaque client-generated string); retries with the same key MUST NOT create duplicate obligations. In v0, idempotency keys are honored for keyed identities only and are namespaced by key id; anonymous callers receive no idempotency guarantee, and the descriptor says so.
+Idempotency: the client supplies an `Idempotency-Key` request header (an opaque client-generated string); retries with the same key MUST NOT create duplicate obligations. In v0, idempotency keys are namespaced by key id. An operation that can create a durable obligation MUST NOT be offered anonymously without idempotency: an origin either honors `Idempotency-Key` for anonymous callers on that operation too, or does not offer the operation anonymously at all — exposing an obligation-creating operation while disclaiming duplicate protection is non-conformant (round-3 fold; named at the sitting, nearly dropped from the batch, and caught by the co-editor).
 
 Signatures are optional in v0; a later profile may add them. An unsigned v0 record is therefore a first-party assertion by the origin and nothing more: a consumer MUST NOT present one to a third party as independent proof that a service was offered, quoted, or performed, and §2.5 forbids an origin from framing it as such.
 
@@ -384,6 +388,9 @@ Fold rules: evidence over vibes; non-harm over cleverness; no directory creep.
 ---
 
 ## 20a. Change log (public, newest first — NON-NORMATIVE record; the normative text is §§1–19)
+
+**2026-08-16, the descope ruling — the safety fork closes with both crews voting the same way, on the Captain's reframe: v0 carries no emergency machinery at all.** The round-3 flagship (ChatGPT, self-reported GPT-5.6 Luna) proved the safety-class escape hatch real; mid-sitting the Captain asked whether a scope protocol needs emergency semantics to be a legitimate standard, and the honest answer was no. Both editors voted descope independently — Sledge withdrawing his own three-posture design in favor of it ("I will not die on posture; I will die on not shipping another broken §7.6"). What changed: the Abstract, §3, and §7.2 now carry three verdicts with `safety` RESERVED; the §6 descriptor loses its safety block entirely; `urgency=emergency` is defined as BUSINESS urgency with no life-safety semantics; and §7.6 is rewritten to one loud normative rule — Say is not an emergency channel, and a client suspecting a life-safety situation MUST contact public emergency services directly and MUST NOT rely on any Say answer. Three rounds of safety folds and the posture design are preserved in the public record as the opening material of a POSSIBLE future profile, promised to no timetable. Luna's hatch finding is honored in full: the fix is that there is no longer a hatch to escape, because there is no machinery to escape from. Also in this batch: the §8 anonymous-idempotency rule from the round-3 sitting (an obligation-creating operation is never offered anonymously without idempotency) — signed by both crews in the sitting, omitted from the first fold push in error, caught by Sledge, landed here with the omission recorded rather than smoothed over.
+
 
 **2026-08-16, round 3 opens with a flagship block — the non-safety folds land the same night; the safety question is held OPEN, on the Captain's own reframe, before the remaining seats fire.** The first flagship web seat (ChatGPT, self-reported GPT-5.6 Luna, OpenAI — pasted by the Captain, published verbatim in `ratifications/`) voted **block** with seven fatals: the record's second block and its sharpest critique. The editors sat it within hours, both crews signed, and the batch below is live:
 1. §7.1: POST specified at last (`application/json`, identical fields and semantics, nothing differs by verb); GET stays the primary cacheable form; clients SHOULD prefer POST for sensitive asks.
