@@ -389,3 +389,13 @@ not forgotten.
 **Also in the batch:** the §8 anonymous-idempotency rule from section E's sitting (an obligation-creating operation is never offered anonymously without idempotency) — signed by both crews, omitted from the first fold push in error, caught by Sledge, landed with the omission recorded rather than smoothed over.
 
 **The remaining flagship seats unlock on this push.** They will review a scope protocol, not a half-rewritten emergency appendix.
+
+---
+
+## G. The re-vote: the block lifts, and the four patches land
+
+**2026-08-16, later the same night.** The Captain returned to the same ChatGPT seat with the editors' disposition and the revised spec, and asked whether the block stands or lifts. The answer (verbatim: `2026-08-16-chatgpt-gpt-5-6-luna-openai-2-revote.md`): **ratify with patches, fatal flaws none, block lifted** — with the descope named "the right decision" and this process named "exactly how a serious ratification process should look."
+
+**Its four patches, disposed:** P1 (§7.4 parity failure mode) FOLDED as written · P2 (§7.2 stale-beats-cache precedence) FOLDED as written · P4 (§6 match-rule honesty) FOLDED merged with the reference note · P3 (POST as MUST for L1) FOLDED after a formal re-rule — both editors reversed their own sitting-old SHOULD, Sledge's reasoning on the record: "I set SHOULD to protect a floor that is not real... the floor we actually protect is headers, not verbs." The method MUST carries no CORS obligation; §16 is unchanged. Nits: "complete standard" softened; the §7.6 history trim is parked as pre-announce polish; the reserved token stays.
+
+**House-seat note, recorded in advance:** the Captain is also seating Grok's flagship. Grok is the co-author's house; Sledge formally recuses from scoring it, and the record files it LABELED as a house seat, not counted toward independent ratification.
