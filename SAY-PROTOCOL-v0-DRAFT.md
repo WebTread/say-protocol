@@ -121,7 +121,7 @@ Legacy preview deployments MAY still serve `/agent/v0/*` with a `preflight` ask 
 
 In the record path, `<id>` is a URL-safe string of at most 64 characters, opaque to the client and not sequentially enumerable (§17).
 
-Version appears in the path. v0 allows breaking changes.
+Version appears in the path. v0 allows breaking changes while this document carries DRAFT status and the only implementations are the editors' own; once an implementation exists outside the editors' fleet on `/say/v0/`, a breaking wire change takes a new version path instead of breaking the one deployed against (ruled at the 2026-08-16 editors' sitting, on Kimi K2.6's round-2 finding).
 
 ---
 
@@ -139,7 +139,7 @@ JSON object including at minimum:
 | `auth` | what L1 requires. The v0 basic ask MUST be answerable anonymously (§11), so a conformant v0 descriptor declares `"none"` for the brake light; where an origin also issues keys, the descriptor says so, and keys relieve rate only and never gate content |
 | `rate` | the implementation's DECLARED rate posture, including honestly declaring `"none"` (shared hosting cannot always meter; a declared absence beats a fictional limit) |
 | `safety` | how life-safety classes are handled: the site's declared `classes` (an empty list is a legitimate declaration), `human_reviewed` (§7.6), the `jurisdiction` this origin answers for by default, and the `referral` it will return |
-| `valid_until` | a date after which consumers MUST treat this surface's artifacts as ABSENT, not merely stale — and past which a live origin SHOULD go dark server-side too (the reference implementation 404s itself on expiry; an abandoned install must not serve dead facts forever) |
+| `valid_until` | a date after which this surface's artifacts are EXPIRED — and expiry is never silent. For a 30-day grace window after `valid_until`, an origin MAY keep answering: the descriptor stays HTTP 200 carrying an explicit `stale: true`, every answer body carries the same flag, and a consumer MUST NOT present a stale answer as fresh. Past the window, the origin serves **410 Gone on the descriptor** — other doors may go dark, but the descriptor's 410 is the diagnosable signal, never a mystery 404 — and consumers MUST treat the surface as ABSENT. An abandoned install still cannot serve dead facts forever; a lapsed calendar no longer silently erases a correctly configured shop (re-ruled at the 2026-08-16 editors' sitting on a two-house round-2 convergence, Gemma 4 26B + Kimi K2.6, superseding round 1's absolute-ABSENT fold; the reference implementation's self-404 changes to follow this ruling) |
 | `as_of_method` | how `as_of` is produced (for example `git_content_commit` or `build_date`) so a consumer can tell real fact vintage from a build clock |
 | `content` | for the brake light, v0 SHOULD declare `"same_for_all"`: tiers may change rate, never truth (§11) |
 | `why` | the site's CLOSED refusal vocabulary (§7.3), declared per verdict class so a consumer can read a `no` or an `indeterminate` without guessing (the reference descriptor declares these inside its `answers` block, as `why_no` and `why_indeterminate`). A refusal token an origin can emit and has not declared is non-conformant |
@@ -182,7 +182,7 @@ Every answer includes:
 | `v` | 0 |
 | `r` | `yes` \| `no` \| `indeterminate` \| `safety` |
 | `as_of` | oldest fact used in *this* answer, as an RFC 3339 date (`YYYY-MM-DD`) or full UTC date-time, at the precision the site actually tracks and never finer |
-| `gen` | build or generation id of the surface: an opaque string that changes whenever any fact that could change an answer changes. Clients MUST NOT parse it or order by it |
+| `gen` | build or generation id of the surface: an opaque string that changes whenever any fact that could change an answer changes. Clients MUST NOT parse it or order by it. An origin MAY echo `gen` as the HTTP `ETag` and honor `If-None-Match` for cheap revalidation; the change feed (§9) remains the subscription path (2026-08-16 sitting, on Kimi K2.6's round-2 finding) |
 | `doc` | pointer back to descriptor |
 
 Unrecognized future `r` values MUST be treated by clients as `indeterminate` (never as yes).
@@ -238,6 +238,8 @@ v0 does not require old-value diffs or a full history replay API. Caps on length
 Machine surfaces SHOULD send `noindex` (or equivalent) when they are compact twins of human content, and MUST NOT cloak contradictory substance. `noindex` stays SHOULD in v0 so shared hosts that cannot set headers are not manufactured non-conformant; the anti-cloak MUST is the safety rule.
 
 **Parity is a validator property, not only a slogan.** Wire shape cannot prove a human phone call. Conformance walks (Water Heater Walk and successors) MUST compare sample asks to human-visible substance on the same origin and fail cloaking or machine-only fiction. A principle with no walk is a wish; the walk is part of shipping Say, not an optional badge.
+
+A walk SHOULD additionally review the refusal pattern across its own sample for §12-shaped coverage exclusion. Probing answers to build a coverage map *for validation* is not the prohibited use named in §7.1 — that clause forbids targeting people, not testing origins. A walk publishes what it measured and no more: this document defines no statistical threshold, and a tool MUST NOT label an origin discriminatory on pattern alone — honest rural and license-bounded coverage produces skewed maps, and that judgment is counsel's ground (§19 gate 5), not an instrument's (2026-08-16 sitting, on the instinct in Qwen3 30B's block vote; the MUST form was declined).
 
 Cross-origin “Powered by” footprints that weld many sites into a detectable doorway network are discouraged.
 
@@ -318,7 +320,8 @@ Publish measurements with method, not vibes.
 
 ## 17. Privacy considerations
 
-- Minimize personal data in asks; job + coarse geo suffices for L1  
+- Minimize personal data in asks; job + coarse geo suffices for L1
+- Origins serving populations at risk (domestic-violence shelters, reproductive-health clinics, and similar) SHOULD weigh that structured availability answers make hostile polling cheap. Parity permits a machine door to say only what the human page already says, and it never REQUIRES one: such an origin may omit `open_now` and hours from machine answers, decline to light a Say surface at all, or answer with a declared refusal (`surface_disabled` is already ordinary vocabulary). No new wire field; vertical guidance rides §19 gate 5 counsel (2026-08-16 sitting, on Kimi K2.6's round-2 harm finding)  
 - Records MUST NOT store principal personal data unless the business transaction path defined outside this protocol actually requires it. Where a record needs geography, it stores the MATCHED value the origin decided at, expressed at the origin's own declared `grain` — never the raw `where` string the asker submitted. This is the privacy analogue of the grain-lock (§7.1), and it is already how the reference surface answers: a `yes` carries the region it matched, not the text it was handed  
 - Public facts only in L0 bundles. "Public" is not the origin's own call: it is §2.3 parity read from the privacy side — a fact may ride an L0 bundle only if a human could obtain it by asking the business through ordinary means, tested in practice against the human-visible substance on the same origin (§10). Freshness, generation, and matching metadata are protocol plumbing rather than business facts, and this bullet does not reach them  
 
@@ -390,6 +393,14 @@ Fold rules: evidence over vibes; non-harm over cleverness; no directory creep.
 ---
 
 ## 20a. Change log (public, newest first)
+
+**2026-08-16, same night: the editors' sitting on the round-2 ARGUE items — six items, five rulings folded, one hold. Both crews on record; full votes in the round-2 disposition addendum.**
+1. §5.2: v0's breaking-change license bounded — DRAFT may break while the only implementations are the editors' own; the first outside implementer on `/say/v0/` makes breaking wire changes take a new version path (R2-13, ruled to Sledge's middle).
+2. §6: **the `valid_until` rule is re-ruled** — expiry is never silent: a 30-day marked-stale grace window (descriptor HTTP 200 + explicit `stale: true` on every body, consumers MUST NOT present stale as fresh), then **410 Gone on the descriptor only**, never a mystery 404. Supersedes round 1's absolute-ABSENT fold. Two houses (Gemma 4 26B, Kimi K2.6) independently filed the old rule as fail-deadly for small operators, and they were right; the abandoned-install harm the old rule guarded stays guarded by the stale mark and the 410. The reference implementation's self-404 changes to follow the ruling (R2-14).
+3. §10: validator walks SHOULD review refusal patterns for §12-shaped coverage exclusion, with the carve-out that probing for validation is not §7.1's prohibited use — and a hard line that no tool labels an origin discriminatory on pattern alone; that is counsel's ground (R2-15, the instinct in Qwen3 30B's block vote folded as SHOULD; the MUST declined).
+4. §7.2: `gen` MAY be echoed as `ETag` with `If-None-Match` honored; the change feed remains the subscription path (R2-16, folded as an implementation note, no new wire).
+5. §17: guidance for origins serving populations at risk — omit `open_now`, decline to light a surface, or answer `surface_disabled`; parity never REQUIRES a machine door; no new wire field (R2-17).
+6. R2-18 (legacy-path deprecation signal) is HELD by joint vote until a sunset is actually dated; it sits with R2-13's future versioning work.
 
 **2026-08-16: ratification round 2 — five more houses seated, twelve verified folds, and the record's first block vote.** New seats, all published verbatim in `ratifications/`: Kimi K2.6 (Moonshot AI — round 1's timeout, re-run to a clean finish), Llama 4 Scout (Meta), Mistral Small 3.1 (Mistral AI), Gemma 4 26B (Google open weights), Qwen3 30B (Alibaba). Four voted ratify with patches; **Qwen3 30B voted block** over §12 enforcement, and the editors' full answer lives in the round-2 disposition file rather than a footnote. Ninety-four raw findings deduplicated to forty-five candidates; every fold below was anchored against the exact spine text AND checked against the first live implementation before landing. The batch:
 1. §6: the descriptor table gains the three vocabulary rows the rest of the spec already depended on — `why` declared per verdict class, `need` scoped to the ask with its wire encoding, `errors` with the declared-identifier-to-problem-`type` relation (Kimi K2.6; Llama 4 Scout converged on the `need` half).
