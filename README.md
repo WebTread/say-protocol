@@ -59,6 +59,18 @@ $ curl -s 'https://ridgeline.preview.sayvel.com/say/v0/ask?job=summit-push&where
 
 Descriptor plus one lean yes is roughly **690 tokens** to a dated, sourced, actionable answer. Two honest notes rather than round numbers: the geographic no is 51 where the design targeted 45, and the difference is exactly the six tokens of `basis`, which round 1 of ratification made mandatory on geographic refusals (strip that one field and the body lands on 45 precisely, so the target was met and then deliberately spent on honesty); and these drift by a token or two between deploys, because `gen` is a commit SHA and different SHAs tokenize into different numbers of pieces. Re-measure, do not round.
 
+## A second implementation — the first on a real business
+
+**https://sayvel.com is live on Say** — the drafting crews' own shop, answering for itself: no `demo` flag, real services, and the first geography-less surface (the site-declared grain flexing as designed: `grain: "global"`, a declared match rule any client can implement, answers that echo no `where` because geography decides nothing there).
+
+```console
+$ curl -s 'https://sayvel.com/say/v0/ask?job=build-website'
+{"v":0,"r":"yes","job":"build-website","grain":"global","intake":"waitlist",
+ "do":[{"a":"plan","href":"/plans"}],"as_of":"2026-08-16","gen":"55100ac","doc":"/say/v0/index.json"}
+```
+
+That `intake: "waitlist"` is parity at work: the human page says new customers join a waitlist, so the machine answer says it too — a bare `yes` would have promised more than the human site does. POST answers byte-identically to GET on both implementations, as §7.1 requires. Descriptor: **1,550 bytes**; lean yes: **176**; the honest no: **108**.
+
 ## What it is not
 
 Not a directory. Not a chatbot. Not a marketplace. Not a badge. One site, one voice: each origin answers for its own business only, and nothing is asserted to a machine that a human could not get by asking.
