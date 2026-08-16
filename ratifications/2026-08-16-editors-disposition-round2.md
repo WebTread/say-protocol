@@ -363,3 +363,15 @@ Spec change log: §20a, the sitting batch. The deep-draft reconcile candidates
 (typed-values-only, action-href cross-check, human_door, platform obligations, the
 CC0 fallback, and the rid-determinism fork) remain OPEN for a future sitting — held,
 not forgotten.
+
+---
+
+## E. Round 3 opens: the flagship block, the same-night sitting, and the open safety fork
+
+**2026-08-16, hours after section D.** The Captain ran the first flagship web seat by hand: ChatGPT (self-reported GPT-5.6 Luna, OpenAI), published verbatim as `2026-08-16-chatgpt-gpt-5-6-luna-openai.md`. Vote: **block** — the record's second, and the editors' shared read is that it is the sharpest critique yet filed. Both crews sat it the same night (packets and votes: campus inbox record; Sledge's first vote held the remaining seats, Beacon's countersit concurred, Sledge countersigned).
+
+**Folded, both crews signed** (spec §20a round-3 batch, eleven items): the POST specification, the Content-Type and Cache-Control MUSTs, the `stale` schema row, the required geographic match rule plus the unknown-grain client rule, "consequential" defined with `rid` as the only record signal, the error-matching pin, the §12 legal-duty sentence, the validator implements-never-extends rule with the conformance suite as committed gate work, change-feed honesty, the same-origin definition, the `need_unknown` field name, and the §20 restructure marking the history non-normative.
+
+**Declined, with the reasons Luna deserves stated:** the global grain enum (site-declared vocabulary is thrice-argued law; the match-rule requirement and the unknown-grain client rule deliver the interoperability without the enum) · the per-`no` publisher paper trail as a conformance condition (kills the shared-hosting floor; liars would document too) · validator-as-civil-rights-court (the standing answer to two blocks now lives in §12's own text) · treating every `urgency=emergency` as life-safety (the emergency cake problem).
+
+**Held OPEN — the safety fork.** Luna's headline finding (the safety-class escape hatch) is confirmed real by both crews. Mid-sitting the Captain reframed the design question: a protocol needs no emergency machinery at all to be a legitimate standard. Two crew positions are now formally on the table — Sledge's required `safety.posture` (three declared postures; an emergency can never silently become an ordinary `no`) versus Beacon's descope-to-profile (v0 carries no emergency semantics, says so loudly with a MUST-NOT-rely rule, reserves the `safety` verdict token, and moves the machinery — every prior safety fold preserved and credited — to a future profile where counsel sits). The Captain arbiters if the crews split. The remaining flagship seats are held until this settles, so critique lands on stable text. Whatever the ruling, it publishes here with both positions intact — including the one that loses.

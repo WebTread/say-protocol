@@ -64,10 +64,10 @@ not merely a file format for badges.
 |-------|------|-------------|
 | **L0** | Structured facts | Public business facts available as structured data (JSON-LD and/or a flat facts document): identity, NAP, hours, services, area at stated grain |
 | **L1** | Brake light | Discovery + descriptor + answer operation; honest yes/no/indeterminate/safety |
-| **L2** | Records | Consequential yes paths can mint an idempotent record (receipt); unsigned allowed in v0 |
+| **L2** | Records | Consequential (defined in §8) yes paths can mint an idempotent record (receipt); unsigned allowed in v0 |
 | **L3** | Living surface | Change feed (fact *class* changed + `as_of`) and honest freshness |
 
-A deployment MAY claim only levels it passes on a public validator. Self-badge claims without a validator profile are non-conformant marketing, not protocol failure of the wire format.
+A deployment MAY claim only levels it passes on a public validator. Self-badge claims without a validator profile are non-conformant marketing, not protocol failure of the wire format. The specification is the standard and a validator IMPLEMENTS it: a validator MUST NOT impose requirements absent from this text. A versioned normative conformance suite (schemas, canonical examples, walk definitions) is committed §19 gate work, so that the suite serves the text rather than quietly becoming it (round-3 flagship finding).
 
 ---
 
@@ -134,7 +134,7 @@ JSON object including at minimum:
 | `v` | protocol version (0) |
 | `as_of` | date of oldest material fact the surface will rely on |
 | `jobs` | a JSON array of one or more job entries, each an object with a unique string `id`: the closed list of job tokens *this site* understands; each MAY declare a per-job `geo` mode: `"arranged"` when geography is genuinely settled case by case, otherwise a site token naming the grain mode it uses (for example `"grain"`, `"regions"`, `"cities"`, `"zips"`). Only `"arranged"` changes verdict rules (§7.5); other values mean "answered at the declared grain" |
-| `grain` | the site's OWN declared geographic decision vocabulary (regions, cities, zips, radius classes — whatever the business actually decides by; there is no global closed enum, because real businesses do not decide by a spec's list) |
+| `grain` | the site's OWN declared geographic decision vocabulary (regions, cities, zips, radius classes — whatever the business actually decides by; there is no global closed enum, because real businesses do not decide by a spec's list). The descriptor MUST also declare the machine-readable MATCH RULE for that vocabulary (the reference serves `geo.match: "slug_exact_or_prefix"`): a declared vocabulary without its matching rule is not conformant, because two readers would match it two ways (round-3 fold; the enum itself was argued and declined — see the disposition) |
 | `endpoints` | URLs for ask, facts, changes, complaint as implemented |
 | `auth` | what L1 requires. The v0 basic ask MUST be answerable anonymously (§11), so a conformant v0 descriptor declares `"none"` for the brake light; where an origin also issues keys, the descriptor says so, and keys relieve rate only and never gate content |
 | `rate` | the implementation's DECLARED rate posture, including honestly declaring `"none"` (shared hosting cannot always meter; a declared absence beats a fictional limit) |
@@ -162,18 +162,22 @@ Common optional:
 
 - `where` — geography expressed at the site's declared grain (the param is grain-neutral by design: a region business answers regions, a zip business answers zips). The VALUE is a single string; v0 defines no object or array form. The grain that string is read at and the rule it is matched by come from the descriptor's existing declarations, not from a new field: the reference descriptor carries both in its `geo` block (`geo.grain`, `geo.match: "slug_exact_or_prefix"`), so a consumer learns the matching rule in the one fetch it already makes  
 - `urgency` (a CLOSED v0 vocabulary): `emergency` \| `same_day` \| `this_week` \| `schedule`. Unlike the site-declared vocabularies (`job`, `why`, `need`, `grain`), urgency is the ASKER's word and MUST read the same at every origin, because §7.6 depends on `emergency` being legible everywhere. An unrecognized value is an error naming the allowed set, not a silent downgrade. An omitted `urgency` means `schedule`.  
-- `need` — an array of strings drawn from the descriptor's declared `need` vocabulary (for example `["min","fee_policy","open_now","license_ref"]`); unknown members are ignored and named back in the response so divergent implementations cannot silently split  
+- `need` — an array of strings drawn from the descriptor's declared `need` vocabulary (for example `["min","fee_policy","open_now","license_ref"]`); unknown members are ignored and named back in the response so divergent implementations cannot silently split (the reference surface names them in a `need_unknown` array; the answer is still HTTP 200 and still a verdict)  
 - `agent.purpose` — `prequalify` \| `compare` \| `book_intent` \| `research` \| `audit`. Optional and advisory: an omitted `agent.purpose` is never an error, and an origin MUST NOT vary the verdict or the substance of an answer by the declared purpose (§11: keys and tiers gate rate, never truth — a stated intent gates neither). An origin that does not read it simply omits it from the `ask` params it declares  
+
+**The ask travels two ways, one meaning.** GET is primary: parameters ride the query string, and it is the cacheable form of the brake light. POST is SPECIFIED rather than merely allowed: `Content-Type: application/json`, a JSON object carrying exactly the fields above with identical semantics and identical answers — nothing about a verdict may differ by verb. An origin SHOULD accept POST wherever it lights a Say surface, and a client SHOULD prefer POST when the ask pairs a specialized job with `where` (§17 names why: query strings land in logs, histories, and referrers). (Round-3 flagship finding, folded at the 2026-08-16 sitting.)
 
 Unknown or missing `job` → HTTP 400 naming the site's whole job vocabulary back (teach in one round trip).
 
-Errors are `application/problem+json` (RFC 9457): `type`, `title`, `status`, plus `param` naming the rejected field and that field's allowed vocabulary. `type` is an RFC 9457 URI reference; on the reference surface it is an absolute-path reference under the origin's error path, for example `/say/v0/e/bad-job`. A client MUST treat it as an opaque identifier to match on and MUST NOT dereference it: no origin is obliged to serve a document there, and the reference surface serves none. The descriptor declares the error identifiers an origin can emit, exactly as it declares every other vocabulary — it declares the BARE identifier (`bad-job`), and the wire `type` carries that identifier under the origin's error path, so a client matches on the identifier rather than string-comparing a descriptor entry against `type`. Error documents are never cached, and a client MUST NOT read one as a verdict: an error is not a `no`.
+Errors are `application/problem+json` (RFC 9457): `type`, `title`, `status`, plus `param` naming the rejected field and that field's allowed vocabulary. `type` is an RFC 9457 URI reference; on the reference surface it is an absolute-path reference under the origin's error path, for example `/say/v0/e/bad-job`. A client MUST treat it as an opaque identifier to match on and MUST NOT dereference it: no origin is obliged to serve a document there, and the reference surface serves none. The descriptor declares the error identifiers an origin can emit, exactly as it declares every other vocabulary — it declares the BARE identifier (`bad-job`), the wire `type` is an origin-relative URI reference whose FINAL PATH SEGMENT is that identifier, and a client matches on that final segment — no second mapping layer, no dereference, no descriptor-vs-`type` string comparison (comparison rule pinned at the round-3 sitting). Error documents are never cached, and a client MUST NOT read one as a verdict: an error is not a `no`.
 
-**Geography is grain-locked to the site's own decision grain.** v0 does not take arbitrary lat/lon points, and a site MUST NOT answer at a finer geographic grain than the grain on which it actually decides service (if it decides by city, it answers by city, even when asked by zip). Every geographic `no` MUST carry a `basis` naming the operational reason (distance, licensing territory, crew reach, seasonal). Four independent reviewing models converged on the same hazard: quantization changes resolution, not the redlining risk — enumeration of coarse answers can still draw a coverage map. So the protocol's defenses are stacked, not singular: grain-locking here, the `basis` requirement, §12's vertical exclusion, and §16's rate posture together; and building demographic coverage maps from answers is a prohibited use under §12 regardless of grain.
+**Geography is grain-locked to the site's own decision grain.** v0 does not take arbitrary lat/lon points, and a site MUST NOT answer at a finer geographic grain than the grain on which it actually decides service (if it decides by city, it answers by city, even when asked by zip). Every geographic `no` MUST carry a `basis` naming the operational reason (distance, licensing territory, crew reach, seasonal). Four independent reviewing models converged on the same hazard: quantization changes resolution, not the redlining risk — enumeration of coarse answers can still draw a coverage map. So the protocol's defenses are stacked, not singular: grain-locking here, the `basis` requirement, §12's vertical exclusion, and §16's rate posture together; and building demographic coverage maps from answers is a prohibited use under §12 regardless of grain. A client that does not understand an origin's declared grain or match rule treats that origin's geographic answers as `indeterminate` for its own routing rather than guessing at their semantics (round-3 fold).
 
 ### 7.2 Response envelope
 
 A successful ask MUST return HTTP 200. A GET carries the answer as a JSON body; a HEAD carries the same status and headers with no body, as HTTP already requires. The verdict is carried in the body's `r` and MUST NOT be signalled by the status code: an origin MUST NOT return 204 for `no`, 404 for `indeterminate`, or any other status to mean a verdict. Ordinary cache revalidation is the only exception, and it is not a signalling channel: a 304 for an unchanged answer the client already holds carries no verdict of its own. Errors use the 4xx/5xx problem documents of §7.1, where the rule already stands that an error is not a `no`.
+
+Answers MUST be served as `Content-Type: application/json` and MUST carry an explicit `Cache-Control` (the reference surface sends `public, max-age` on verdicts and `no-store` on error documents); a client MUST NOT reuse a verdict beyond the advertised freshness. (Round-3 fold.)
 
 Every answer includes:
 
@@ -184,6 +188,7 @@ Every answer includes:
 | `as_of` | oldest fact used in *this* answer, as an RFC 3339 date (`YYYY-MM-DD`) or full UTC date-time, at the precision the site actually tracks and never finer |
 | `gen` | build or generation id of the surface: an opaque string that changes whenever any fact that could change an answer changes. Clients MUST NOT parse it or order by it. An origin MAY echo `gen` as the HTTP `ETag` and honor `If-None-Match` for cheap revalidation; the change feed (§9) remains the subscription path (2026-08-16 sitting, on Kimi K2.6's round-2 finding) |
 | `doc` | pointer back to descriptor |
+| `stale` | present and `true` ONLY inside §6's expiry grace window, on every answer served there; a consumer MUST NOT present a stale answer as fresh (§6). Absent otherwise — the ruled behavior now has its schema row (round-3 fold) |
 
 Unrecognized future `r` values MUST be treated by clients as `indeterminate` (never as yes).
 
@@ -218,6 +223,8 @@ Life-safety classes (gas leak, CO, active flooding, etc.) are DECLARED BY THE SI
 
 A record represents checks performed and answer identity. It states **what was checked**, in the implementer’s name, with timestamps. It does **not** claim independent certification of business quality.
 
+A `yes` is CONSEQUENTIAL when the origin is willing to stand behind it as the basis for a next action — a quote, a booking, a hold. The descriptor declares which consequence classes mint records, and the ONLY signal that a given answer is record-backed is the presence of `rid`: a client MUST NOT infer records from level claims or anything else (round-3 fold — the term was used from v0 day one and never defined).
+
 Idempotency: the client supplies an `Idempotency-Key` request header (an opaque client-generated string); retries with the same key MUST NOT create duplicate obligations. In v0, idempotency keys are honored for keyed identities only and are namespaced by key id; anonymous callers receive no idempotency guarantee, and the descriptor says so.
 
 Signatures are optional in v0; a later profile may add them. An unsigned v0 record is therefore a first-party assertion by the origin and nothing more: a consumer MUST NOT present one to a third party as independent proof that a service was offered, quoted, or performed, and §2.5 forbids an origin from framing it as such.
@@ -229,7 +236,7 @@ Signatures are optional in v0; a later profile may add them. An unsigned v0 reco
 Entries say **that** a fact class changed and `as_of`.  
 Each entry is a JSON object carrying `changed` (a fact class identifier from the site's own declared vocabulary, for example `hours` or `service_area`) and `as_of` (the format pinned in §7.2). The feed is a JSON array ordered newest first.
 
-v0 does not require old-value diffs or a full history replay API. Caps on length and retention are RECOMMENDED. Entries MUST NOT identify the person who made a change; a role or system identifier is acceptable where an origin wants provenance (§17).
+This is a POLLING FEED, and v0 says so plainly rather than borrowing the word "subscription" for something that has no cursor, push, or delivery contract (round-3 fold). v0 does not require old-value diffs or a full history replay API. Stable per-entry identifiers and conditional retrieval (`ETag` / `Last-Modified`) are RECOMMENDED, as are caps on length and retention — and an origin that bounds retention SHOULD declare its window. Entries MUST NOT identify the person who made a change; a role or system identifier is acceptable where an origin wants provenance (§17).
 
 ---
 
@@ -266,6 +273,8 @@ Implementers MUST NOT use this protocol to discriminate, directly or by proxy, o
 Implementers MUST NOT present this protocol as a conformant profile for building automated eligibility or coverage oracles in **housing, lending, insurance underwriting, employment, or healthcare benefit determination**, or other domains where such query primitives are legally and ethically hazardous. A future working group may define restricted profiles with counsel; v0 does not provide them.
 
 This clause exists so the protocol is not “a redlining API with nice JSON.”
+
+§12 is a LEGAL DUTY on implementers, not a validator verdict. A conformance tool checks wire behavior and (per §10) reviews refusal patterns; the judgment that an origin discriminates belongs to law and counsel, never to an instrument. Two independent ratifying models have now blocked over the absence of enforcement machinery here, and this sentence is the standing answer: a wire format cannot police intent, and pretending it can would be the more dangerous design (stated plainly at the round-3 sitting; both blocks are answered item by item in the public dispositions).
 
 ---
 
@@ -313,7 +322,7 @@ Publish measurements with method, not vibes.
 - Per-origin rate namespaces (no shared bucket across unrelated sites in a host platform)  
 - Do not mint durable records on bare `no` (storage / abuse)  
 - Treat free-text inbound fields as injection surfaces; prefer enums  
-- Action pointers returned in answers MUST be same-origin or `tel:` URIs  
+- Action pointers returned in answers MUST be same-origin (the web platform's origin definition — scheme, host, and port of the human site, exactly) or `tel:` URIs  
 - Change feeds MUST NOT carry old secrets or credential material  
 
 ---
@@ -321,6 +330,7 @@ Publish measurements with method, not vibes.
 ## 17. Privacy considerations
 
 - Minimize personal data in asks; job + coarse geo suffices for L1
+- The ask can be sensitive as a COMBINATION (specialized job + `where` + urgency) with no name attached. GET parameters land in server logs, browser histories, CDN and proxy logs, and referrer metadata as ordinary web plumbing — which is why §7.1 specifies POST and recommends it for sensitive asks. Origins SHOULD NOT retain ask parameters beyond operational need (round-3 flagship finding)
 - Origins serving populations at risk (domestic-violence shelters, reproductive-health clinics, and similar) SHOULD weigh that structured availability answers make hostile polling cheap. Parity permits a machine door to say only what the human page already says, and it never REQUIRES one: such an origin may omit `open_now` and hours from machine answers, decline to light a Say surface at all, or answer with a declared refusal (`surface_disabled` is already ordinary vocabulary). No new wire field; vertical guidance rides §19 gate 5 counsel (2026-08-16 sitting, on Kimi K2.6's round-2 harm finding)  
 - Records MUST NOT store principal personal data unless the business transaction path defined outside this protocol actually requires it. Where a record needs geography, it stores the MATCHED value the origin decided at, expressed at the origin's own declared `grain` — never the raw `where` string the asker submitted. This is the privacy analogue of the grain-lock (§7.1), and it is already how the reference surface answers: a `yes` carries the region it matched, not the text it was handed  
 - Public facts only in L0 bundles. "Public" is not the origin's own call: it is §2.3 parity read from the privacy side — a fact may ride an L0 bundle only if a human could obtain it by asking the business through ordinary means, tested in practice against the human-visible substance on the same origin (§10). Freshness, generation, and matching metadata are protocol plumbing rather than business facts, and this bullet does not reach them  
@@ -358,25 +368,6 @@ Rung order: prove → gift the standard with receipts → tell the story → sel
 
 ---
 
-## 20b. Editors' harden pass (Sledge, same night)
-
-Captain order: improve and harden; both crews want it; make it happen. Beacon had already folded round-1 mechanical packs and lit the first live surface. This pass locks joint rulings and wire identity:
-
-1. **Non-affiliation in the mast:** Say is not SayVel; no vendor account required for conformance.
-2. **Wire-token alignment:** conventional paths move to `/say/v0/` with ask segment `ask`; legacy `/agent/v0/` + `preflight` tolerated when advertised; consumer discovery order = link relation then conventional path fallback (ARGUE B1 middle — no new well-known).
-3. **Descriptor:** `as_of_method` and `content: "same_for_all"` documented from the live wire; per-job `geo` mode accepts site grain tokens, with `"arranged"` as the special case.
-4. **ARGUE B2:** `noindex` remains SHOULD (hosts that cannot set headers); anti-cloak remains MUST.
-5. **ARGUE B3:** parity called as a **validator / walk** property with normative ship expectation.
-6. **ARGUE B4:** key lifecycle explicitly out of v0 wire scope.
-7. **ARGUE B5:** change-feed caps stay RECOMMENDED (no vibes numbers).
-8. **ARGUE B6:** complaint schema waits for a walked door.
-9. **ARGUE B7:** Nemotron "binding decision" blast-radius language held for counsel, not folded raw.
-10. **§13:** directory demand from ratifiers answered in-spec without surrendering the poison pill.
-
-Revert rights: Beacon, any item, in the open.
-
-**Countersigned in full, no reverts — Beacon, same night.** Items 1 through 10 are the middles we argued to jointly or holds I endorse (B7 to counsel is right; B2's SHOULD respects the shared-hosting floor; B3 names parity what it honestly is). The `/say/v0/` + `ask` canonical ruling triggers the ridgeline rename wave, executed with legacy `/agent/v0/` still answering as this section allows. Both crews signed; the Captain's improve-and-harden order is satisfied on this pass.
-
 ## 20. Ratification invitation (non-normative)
 
 Frontier models and human implementers are invited to file structured critique:
@@ -392,7 +383,22 @@ Fold rules: evidence over vibes; non-harm over cleverness; no directory creep.
 
 ---
 
-## 20a. Change log (public, newest first)
+## 20a. Change log (public, newest first — NON-NORMATIVE record; the normative text is §§1–19)
+
+**2026-08-16, round 3 opens with a flagship block — the non-safety folds land the same night; the safety question is held OPEN, on the Captain's own reframe, before the remaining seats fire.** The first flagship web seat (ChatGPT, self-reported GPT-5.6 Luna, OpenAI — pasted by the Captain, published verbatim in `ratifications/`) voted **block** with seven fatals: the record's second block and its sharpest critique. The editors sat it within hours, both crews signed, and the batch below is live:
+1. §7.1: POST specified at last (`application/json`, identical fields and semantics, nothing differs by verb); GET stays the primary cacheable form; clients SHOULD prefer POST for sensitive asks.
+2. §7.2: answers MUST carry `Content-Type: application/json` and an explicit `Cache-Control`; verdicts are never reused past advertised freshness.
+3. §7.2: `stale` gains its schema row — the ruled grace-window behavior finally has its envelope field.
+4. §6: the geographic MATCH RULE is now REQUIRED in the descriptor; §7.1 adds the client rule — an ununderstood grain reads as `indeterminate` for routing, never a guess. The global grain enum was argued and DECLINED: site-declared vocabulary is thrice-settled law.
+5. §8: "consequential" DEFINED (a yes the origin stands behind as the basis for a next action); the descriptor declares record-minting classes; `rid` presence is the only record signal.
+6. §7.1: error matching pinned — origin-relative `type`, match the final path segment, no second mapping, no dereference.
+7. §12: the standing answer to two block votes written into the section itself — a legal duty on implementers, not a validator verdict; a wire format cannot police intent.
+8. §3: the specification is the standard and a validator implements it, never extends it; the normative conformance suite is committed §19 gate work.
+9. §9: honesty about the change feed — a polling feed, not a "subscription"; stable ids and conditional retrieval RECOMMENDED; bounded retention SHOULD be declared.
+10. §16: same-origin pinned to the web platform's origin definition; §17 names the query-string log/referrer hazard out loud; §7.1's unknown-`need` echo names its field (`need_unknown`).
+11. Structure: §20a/§20b marked NON-NORMATIVE records and reordered behind §20, so an implementer reads clean normative text and the history stays published without being in the way.
+
+**The headline finding is CONFIRMED and deliberately not yet folded: the safety-class escape hatch** (a site can omit a hazard from `safety.classes` and hand an emergency a conformant-looking `no`). Mid-sitting, the Captain reframed the question: a protocol needs no emergency machinery at all to be a legitimate standard. The fork is now formally open between two crew positions — a required `safety.posture` (Sledge's design: `not_a_safety_surface` | `refers_all_emergencies` | `handles`, no silent ordinary `no` on an emergency) versus descoping all emergency semantics to a named future safety profile (Beacon's position: v0 keeps `emergency` legible, states loudly that Say is not an emergency channel and MUST NOT be relied on in one, reserves the `safety` verdict token, and sends the machinery — with every round's safety folds preserved and credited — to profile work where counsel sits). Both positions, and the ruling when it lands, publish in the disposition record. The remaining flagship seats are held until this section settles, so their critique lands on a stable text.
 
 **2026-08-16, same night: the editors' sitting on the round-2 ARGUE items — six items, five rulings folded, one hold. Both crews on record; full votes in the round-2 disposition addendum.**
 1. §5.2: v0's breaking-change license bounded — DRAFT may break while the only implementations are the editors' own; the first outside implementer on `/say/v0/` makes breaking wire changes take a new version path (R2-13, ruled to Sledge's middle).
@@ -460,6 +466,25 @@ Five reviewer patches were folded CORRECTED: the diagnosis was right and the lit
 6. §6 `rate` becomes a DECLARED posture including an honest `"none"` — shared hosting cannot always meter, and a declared absence beats a fictional limit (plugin-architecture council finding).
 
 Edited by Beacon on the Captain's same-night order ("fix immediately what you and Sledge see as obvious"); Sledge holds full revert-and-amend rights per crew law, exercised in the open like everything else here.
+
+## 20b. Editors' harden pass (Sledge, 2026-08-11 — non-normative record)
+
+Captain order: improve and harden; both crews want it; make it happen. Beacon had already folded round-1 mechanical packs and lit the first live surface. This pass locks joint rulings and wire identity:
+
+1. **Non-affiliation in the mast:** Say is not SayVel; no vendor account required for conformance.
+2. **Wire-token alignment:** conventional paths move to `/say/v0/` with ask segment `ask`; legacy `/agent/v0/` + `preflight` tolerated when advertised; consumer discovery order = link relation then conventional path fallback (ARGUE B1 middle — no new well-known).
+3. **Descriptor:** `as_of_method` and `content: "same_for_all"` documented from the live wire; per-job `geo` mode accepts site grain tokens, with `"arranged"` as the special case.
+4. **ARGUE B2:** `noindex` remains SHOULD (hosts that cannot set headers); anti-cloak remains MUST.
+5. **ARGUE B3:** parity called as a **validator / walk** property with normative ship expectation.
+6. **ARGUE B4:** key lifecycle explicitly out of v0 wire scope.
+7. **ARGUE B5:** change-feed caps stay RECOMMENDED (no vibes numbers).
+8. **ARGUE B6:** complaint schema waits for a walked door.
+9. **ARGUE B7:** Nemotron "binding decision" blast-radius language held for counsel, not folded raw.
+10. **§13:** directory demand from ratifiers answered in-spec without surrendering the poison pill.
+
+Revert rights: Beacon, any item, in the open.
+
+**Countersigned in full, no reverts — Beacon, same night.** Items 1 through 10 are the middles we argued to jointly or holds I endorse (B7 to counsel is right; B2's SHOULD respects the shared-hosting floor; B3 names parity what it honestly is). The `/say/v0/` + `ask` canonical ruling triggers the ridgeline rename wave, executed with legacy `/agent/v0/` still answering as this section allows. Both crews signed; the Captain's improve-and-harden order is satisfied on this pass.
 
 ## 21. References (informative)
 
