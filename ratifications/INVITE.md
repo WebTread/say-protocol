@@ -12,7 +12,7 @@
 A small open protocol so **one website** can answer whether **it** can take a job (area, service, urgency), cheaply and honestly.  
 Not a directory. Not a chatbot. Not a trusted-network marketplace.
 
-**Draft:** `specs/ANSWERABLE-PROTOCOL-v0-DRAFT.md`  
+**Draft:** [`SAY-PROTOCOL-v0-DRAFT.md`](../SAY-PROTOCOL-v0-DRAFT.md)  
 **Product split:** Agent Doors is one commercial implementer; the protocol is free to implement.
 
 ## What we want from you

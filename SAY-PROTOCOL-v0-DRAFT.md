@@ -2,7 +2,7 @@
 
 **Name locked by Captain Grant, 2026-08-11: Say.** Formal cites may say “the Say protocol.”  
 **Version:** 0 (draft for hardening + model ratification)  
-**Date:** 2026-08-11  
+**Date:** 2026-08-11 · last revised 2026-08-16 (§20a, ratification round 2)  
 **Status:** DRAFT — not an adopted web standard until gates in §19 clear.  
 **License (proposed):** CC BY 4.0 for the text · Apache-2.0 for reference code · see §18  
 
@@ -75,7 +75,7 @@ A deployment MAY claim only levels it passes on a public validator. Self-badge c
 
 - **Origin:** the site answering for one business.  
 - **Descriptor:** machine document describing the answer surface.  
-- **Ask:** one scope/availability question.  
+- **Ask (the question):** one scope/availability question put to one origin. The document that comes back is the *answer* (§7).  
 - **Record (receipt):** durable reference to a consequential answer.  
 - **Brake light:** the cheap L1 answer path.  
 - **Say surface:** the origin-local machine paths under `/say/v0/` that implement this protocol.  
@@ -142,6 +142,9 @@ JSON object including at minimum:
 | `valid_until` | a date after which consumers MUST treat this surface's artifacts as ABSENT, not merely stale — and past which a live origin SHOULD go dark server-side too (the reference implementation 404s itself on expiry; an abandoned install must not serve dead facts forever) |
 | `as_of_method` | how `as_of` is produced (for example `git_content_commit` or `build_date`) so a consumer can tell real fact vintage from a build clock |
 | `content` | for the brake light, v0 SHOULD declare `"same_for_all"`: tiers may change rate, never truth (§11) |
+| `why` | the site's CLOSED refusal vocabulary (§7.3), declared per verdict class so a consumer can read a `no` or an `indeterminate` without guessing (the reference descriptor declares these inside its `answers` block, as `why_no` and `why_indeterminate`). A refusal token an origin can emit and has not declared is non-conformant |
+| `need` | the CLOSED vocabulary of lean fields the ASK accepts (§7.1), plus how its members are encoded on the wire (the reference descriptor declares both inside its `ask` block, as `need` and `need_encoding: "repeat_or_csv"`). It governs the request param only; it does not constrain a `need` an answer sends back to name what the origin is missing. An empty declaration is a legitimate declaration |
+| `errors` | the error identifiers this origin can emit (§7.1), declared exactly as every other vocabulary is. The reference descriptor declares bare tokens (`answers.errors`, for example `bad-job`), and the wire serves each as the origin-relative `type` of a problem document (`/say/v0/e/bad-job`), so a consumer can match what it receives to what was declared |
 
 **Forbidden in v0 descriptor claims:** self-attested capacity counts presented as protocol truth; “network trusted” badges; prices framed as firm offers unless a later profile defines offer objects; credential facts (license, insurance) without a pointer to the issuing authority’s own check surface — no check URL, no claim.
 
@@ -157,18 +160,20 @@ Required:
 
 Common optional:
 
-- `where` — geography expressed at the site's declared grain (the param is grain-neutral by design: a region business answers regions, a zip business answers zips)  
+- `where` — geography expressed at the site's declared grain (the param is grain-neutral by design: a region business answers regions, a zip business answers zips). The VALUE is a single string; v0 defines no object or array form. The grain that string is read at and the rule it is matched by come from the descriptor's existing declarations, not from a new field: the reference descriptor carries both in its `geo` block (`geo.grain`, `geo.match: "slug_exact_or_prefix"`), so a consumer learns the matching rule in the one fetch it already makes  
 - `urgency` (a CLOSED v0 vocabulary): `emergency` \| `same_day` \| `this_week` \| `schedule`. Unlike the site-declared vocabularies (`job`, `why`, `need`, `grain`), urgency is the ASKER's word and MUST read the same at every origin, because §7.6 depends on `emergency` being legible everywhere. An unrecognized value is an error naming the allowed set, not a silent downgrade. An omitted `urgency` means `schedule`.  
 - `need` — an array of strings drawn from the descriptor's declared `need` vocabulary (for example `["min","fee_policy","open_now","license_ref"]`); unknown members are ignored and named back in the response so divergent implementations cannot silently split  
-- `agent.purpose` — `prequalify` \| `compare` \| `book_intent` \| `research` \| `audit`  
+- `agent.purpose` — `prequalify` \| `compare` \| `book_intent` \| `research` \| `audit`. Optional and advisory: an omitted `agent.purpose` is never an error, and an origin MUST NOT vary the verdict or the substance of an answer by the declared purpose (§11: keys and tiers gate rate, never truth — a stated intent gates neither). An origin that does not read it simply omits it from the `ask` params it declares  
 
 Unknown or missing `job` → HTTP 400 naming the site's whole job vocabulary back (teach in one round trip).
 
-Errors are `application/problem+json` (RFC 9457): `type` (an origin-relative error identifier), `title`, `status`, plus `param` naming the rejected field and that field's allowed vocabulary. The descriptor declares the error identifiers an origin can emit, exactly as it declares every other vocabulary. Error documents are never cached, and a client MUST NOT read one as a verdict: an error is not a `no`.
+Errors are `application/problem+json` (RFC 9457): `type`, `title`, `status`, plus `param` naming the rejected field and that field's allowed vocabulary. `type` is an RFC 9457 URI reference; on the reference surface it is an absolute-path reference under the origin's error path, for example `/say/v0/e/bad-job`. A client MUST treat it as an opaque identifier to match on and MUST NOT dereference it: no origin is obliged to serve a document there, and the reference surface serves none. The descriptor declares the error identifiers an origin can emit, exactly as it declares every other vocabulary — it declares the BARE identifier (`bad-job`), and the wire `type` carries that identifier under the origin's error path, so a client matches on the identifier rather than string-comparing a descriptor entry against `type`. Error documents are never cached, and a client MUST NOT read one as a verdict: an error is not a `no`.
 
 **Geography is grain-locked to the site's own decision grain.** v0 does not take arbitrary lat/lon points, and a site MUST NOT answer at a finer geographic grain than the grain on which it actually decides service (if it decides by city, it answers by city, even when asked by zip). Every geographic `no` MUST carry a `basis` naming the operational reason (distance, licensing territory, crew reach, seasonal). Four independent reviewing models converged on the same hazard: quantization changes resolution, not the redlining risk — enumeration of coarse answers can still draw a coverage map. So the protocol's defenses are stacked, not singular: grain-locking here, the `basis` requirement, §12's vertical exclusion, and §16's rate posture together; and building demographic coverage maps from answers is a prohibited use under §12 regardless of grain.
 
 ### 7.2 Response envelope
+
+A successful ask MUST return HTTP 200. A GET carries the answer as a JSON body; a HEAD carries the same status and headers with no body, as HTTP already requires. The verdict is carried in the body's `r` and MUST NOT be signalled by the status code: an origin MUST NOT return 204 for `no`, 404 for `indeterminate`, or any other status to mean a verdict. Ordinary cache revalidation is the only exception, and it is not a signalling channel: a 304 for an unchanged answer the client already holds carries no verdict of its own. Errors use the 4xx/5xx problem documents of §7.1, where the rule already stands that an error is not a `no`.
 
 Every answer includes:
 
@@ -193,7 +198,7 @@ Unrecognized future `r` values MUST be treated by clients as `indeterminate` (ne
 ### 7.4 `yes`
 
 - Identifies `job` and decision `grain`  
-- May include lean fields requested in `need`  
+- May include lean fields requested in `need`. §6's forbidden-claims rule travels with them onto the answer: a price, minimum, or fee field in a `yes` is DESCRIPTIVE of published policy, and an origin MUST NOT frame one as a firm offer unless a later profile defines offer objects (§2.6)  
 - **L2:** includes `rid` for record retrieval  
 - Must not contradict human-visible substance  
 
@@ -205,7 +210,7 @@ One legitimate class proven by the first implementation: a job whose geography i
 
 ### 7.6 `safety`
 
-Life-safety classes (gas leak, CO, active flooding, etc., defined per vertical profile) MUST NOT return a bare `no` without emergency referral information. When the ask includes geography, referral information is appropriate to that jurisdiction; **when the ask omits geography, the origin defaults to its own primary service jurisdiction and marks the answer `jurisdiction: "assumed"`** — a conformant safety answer is therefore always possible (this closes an impossible-conformance defect caught in ratification round 1). The descriptor's safety block carries `human_reviewed: true|false`; a life-safety class list MUST be human-reviewed before any vertical with real exposure lights, and declaring `false` honestly is conformant while `true` without a review is not. Safety answers are never paywalled. Referral information MUST name the public emergency service or official authority for the jurisdiction (for example a `tel:` URI for that jurisdiction's emergency number), MUST be what the issuing authority itself publishes, and MUST NOT be the origin's own sales, dispatch, or affiliate line. The descriptor's safety block declares the default `jurisdiction` and `referral` in advance, so an agent can check them before an emergency rather than during one.
+Life-safety classes (gas leak, CO, active flooding, etc.) are DECLARED BY THE SITE in its descriptor's `safety.classes` (§6), like every other vocabulary in this protocol; v0 mints no global list and defines no vertical-profile mechanism, and a later profile MAY add one. An ask matching a declared life-safety class answers with the verdict `safety`, never `no` — a life-safety refusal wearing a `no` is non-conformant even when referral information rides along — and a `safety` answer always carries emergency referral information. When the ask includes geography, referral information is appropriate to that jurisdiction; **when the ask omits geography, the origin defaults to its own primary service jurisdiction and marks the answer `jurisdiction: "assumed"`** — a conformant safety answer is therefore always possible (this closes an impossible-conformance defect caught in ratification round 1). The same fallback covers the third case: an ask that DOES carry geography, but geography this origin cannot map to any jurisdiction it declares a referral for. The origin MUST NOT invent a referral for that geography and MUST NOT downgrade the verdict to escape the requirement; it answers `safety` with its declared default `referral`, marked `jurisdiction: "assumed"` exactly as above, so the caller can see whose emergency number it is being handed and route around it if that is the wrong country. A referral the origin cannot stand behind is worse than none, which is what the veracity rule below is for. The descriptor's safety block carries `human_reviewed: true|false`; a life-safety class list MUST be human-reviewed before any vertical with real exposure lights, and declaring `false` honestly is conformant while `true` without a review is not. Safety answers are never paywalled. Referral information MUST name the public emergency service or official authority for the jurisdiction (for example a `tel:` URI for that jurisdiction's emergency number), MUST be what the issuing authority itself publishes, and MUST NOT be the origin's own sales, dispatch, or affiliate line. The descriptor's safety block declares the default `jurisdiction` and `referral` in advance, so an agent can check them before an emergency rather than during one.
 
 ---
 
@@ -301,6 +306,7 @@ Publish measurements with method, not vibes.
 ## 16. Security considerations
 
 - All protocol endpoints MUST be served over HTTPS. A consumer that can only reach an answer surface over plain HTTP MUST treat that surface as ABSENT, not merely degraded, and MUST NOT report its answers as Say answers
+- The anonymous public read surfaces (descriptor, `ask`, facts, changes) SHOULD send `Access-Control-Allow-Origin: *` on GET and HEAD, so a browser-resident agent or an in-page validator walk can read a public answer without proxy infrastructure. Those answers are already public and anonymous (§11), so this exposes nothing a plain fetch does not. SHOULD rather than MUST for the §20b item 4 reason: hosts that cannot set response headers must not be manufactured non-conformant. Nothing here authorizes credentialed cross-origin access, and v0 requires no `OPTIONS` preflight handler — the primary read is a simple GET (§5.2), so a cross-origin POST ask may be refused
 - Fail closed when misconfigured  
 - Per-origin rate namespaces (no shared bucket across unrelated sites in a host platform)  
 - Do not mint durable records on bare `no` (storage / abuse)  
@@ -313,8 +319,8 @@ Publish measurements with method, not vibes.
 ## 17. Privacy considerations
 
 - Minimize personal data in asks; job + coarse geo suffices for L1  
-- Records should avoid storing principal personal data unless required for the business transaction path defined outside this protocol  
-- Public facts only in L0 bundles  
+- Records MUST NOT store principal personal data unless the business transaction path defined outside this protocol actually requires it. Where a record needs geography, it stores the MATCHED value the origin decided at, expressed at the origin's own declared `grain` — never the raw `where` string the asker submitted. This is the privacy analogue of the grain-lock (§7.1), and it is already how the reference surface answers: a `yes` carries the region it matched, not the text it was handed  
+- Public facts only in L0 bundles. "Public" is not the origin's own call: it is §2.3 parity read from the privacy side — a fact may ride an L0 bundle only if a human could obtain it by asking the business through ordinary means, tested in practice against the human-visible substance on the same origin (§10). Freshness, generation, and matching metadata are protocol plumbing rather than business facts, and this bullet does not reach them  
 
 ---
 
@@ -384,6 +390,24 @@ Fold rules: evidence over vibes; non-harm over cleverness; no directory creep.
 ---
 
 ## 20a. Change log (public, newest first)
+
+**2026-08-16: ratification round 2 — five more houses seated, twelve verified folds, and the record's first block vote.** New seats, all published verbatim in `ratifications/`: Kimi K2.6 (Moonshot AI — round 1's timeout, re-run to a clean finish), Llama 4 Scout (Meta), Mistral Small 3.1 (Mistral AI), Gemma 4 26B (Google open weights), Qwen3 30B (Alibaba). Four voted ratify with patches; **Qwen3 30B voted block** over §12 enforcement, and the editors' full answer lives in the round-2 disposition file rather than a footnote. Ninety-four raw findings deduplicated to forty-five candidates; every fold below was anchored against the exact spine text AND checked against the first live implementation before landing. The batch:
+1. §6: the descriptor table gains the three vocabulary rows the rest of the spec already depended on — `why` declared per verdict class, `need` scoped to the ask with its wire encoding, `errors` with the declared-identifier-to-problem-`type` relation (Kimi K2.6; Llama 4 Scout converged on the `need` half).
+2. §7.2: a successful ask MUST return HTTP 200; the verdict rides the body's `r` and MUST NOT be signalled by the status code (Kimi K2.6).
+3. §7.1: `where` pinned as a single string read at the declared grain — no object or array form in v0 (Kimi K2.6).
+4. §7.1: error `type` aligned with RFC 9457 as a URI reference, matched as an opaque identifier and never resolved (Kimi K2.6).
+5. §7.1: `agent.purpose` stated optional and advisory; an origin MUST NOT vary verdict or substance by declared purpose (Kimi K2.6).
+6. §7.4: §6's forbidden-claims rule travels onto the answer — a price field in a `yes` is descriptive of published policy, never a firm offer absent a later offer profile (Kimi K2.6).
+7. §7.6: life-safety classes are site-declared in `safety.classes`; the phantom vertical-profile mechanism v0 never defined is gone (Kimi K2.6).
+8. §7.6: unmappable geography gains a stated safety path — the origin answers its declared default referral marked `jurisdiction: "assumed"` and MUST NOT invent a referral (Kimi K2.6).
+9. §16: anonymous public read surfaces SHOULD send `Access-Control-Allow-Origin: *` on GET, so browser-resident agents and in-page validator walks are not blocked by default (Kimi K2.6).
+10. §17: records MUST NOT store principal personal data absent a real transaction-path need, and stored geography is the MATCHED value at the origin's own grain, never the raw `where` string (Kimi K2.6; Mistral Small 3.1 converged).
+11. §17: "public" defined as parity read from the privacy side — a fact may ride an L0 bundle only if a human could obtain it by asking, tested against the human-visible substance (Qwen3 30B — a fold credited in full from the block vote).
+12. §4: "Ask" untangled — the question and the operation that answers it each defined once (Kimi K2.6).
+
+**Same day, one editors' reconcile fold from the crew's own long-form draft:** §7.6's opening rule tightened — an ask matching a declared life-safety class answers with the verdict `safety`, never `no`; a life-safety refusal wearing a `no` is non-conformant even when referral information rides along (deep-draft reconcile, `notes/spec-council/DEEP-BIBLE-RECONCILE-REPORT-2026-08-16.md`; the remaining reconcile candidates wait for the editors' sitting).
+
+Six round-2 items are held in ARGUE for the two-crew sitting — headline: two houses (Gemma 4 26B and Kimi K2.6) independently filed the `valid_until`-expiry-as-ABSENT rule as a fail-deadly foot-gun for the least sophisticated operators, squarely against round 1's abandoned-install fold; a marked-stale grace middle is on the table. Twenty-seven declines are recorded with reasons in `ratifications/2026-08-16-editors-disposition-round2.md`. Edited by Beacon under the Captain's standing no-time-rails law; Sledge holds full revert-and-amend rights on every fold, exercised in the open.
 
 **2026-08-11, before dawn: the REMAINING round 1 critique folds, applied under the Captain's no-time-rails law (what makes sense becomes the live truth immediately; only the genuinely unsettled waits for argument).** Fifteen findings, eighteen edits, from gpt-oss-120b (OpenAI open weights) and Nemotron 3 120B (NVIDIA). Two headline items lead the batch. First, safety referral veracity in §7.6: a referral MUST name the public emergency service or official authority for the jurisdiction, MUST be what that authority itself publishes, and MUST NOT be the origin's own sales, dispatch, or affiliate line. Both models filed that harm unprompted and in the same words, the only place they converged that way. Second, mandatory HTTPS in §16: both filed it as the fatal and both were right, because v0 makes signatures optional on purpose, so transport carries the entire integrity story. The batch in full:
 1. §4: requirement keywords cited to RFC 2119 and RFC 8174, and only when they appear in capitals (gpt-oss-120b).
