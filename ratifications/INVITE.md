@@ -25,6 +25,25 @@ Structured critique, not vibes:
 4. Adoption failure modes (publisher-only rot)  
 5. Concrete patch language  
 
+## Where the argument stands (so your sharpest attention lands on open ground)
+
+Three questions are already SETTLED by recorded rulings — re-arguing them as filed will be
+declined with a pointer to the record, though critique of the rulings themselves is fair game:
+
+1. **Safety/emergency: CLOSED by the 2026-08-16 descope ruling.** v0 deliberately carries NO
+   emergency machinery — §7.6 is one loud MUST-NOT-rely rule and a reserved verdict token.
+   Three prior rounds broke the old safety section four ways; the fix was removal. Proposing
+   new emergency machinery for v0 re-litigates a closed ruling; critiquing whether the
+   descope itself is sound is welcome.
+2. **Geography: the global grain enum was argued and DECLINED** (site-declared vocabulary +
+   a REQUIRED machine-readable match rule + unknown-grain-reads-as-indeterminate). Fresh
+   geography findings welcome; the enum is settled.
+3. **§12 enforcement machinery: answered twice** (two block votes); the standing answer is
+   in §12's own text — a legal duty on implementers, not a validator verdict.
+
+Genuinely OPEN and seeking your critique: the conformance-suite shape, L2 records depth,
+discovery, operationalizing parity, adoption mechanics — and everything nobody has raised yet.
+
 ## Fold rules
 
 - Editors: Sledge + Beacon  
